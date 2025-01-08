@@ -19,7 +19,7 @@ Build build(Flags flags) noexcept {
 	b.add_define("NOMINMAX");
 
 	b.add_library("kernel32.lib");
-
+	
 
 	return b;
 }

@@ -1532,7 +1532,9 @@ void handle_build(Build& b, NS::States& new_states) noexcept {
 
 		if (b.target == NS::Build::Target::Exe && b.flags.run_after_compilation && successful) {
 			std::string run = NS::details::get_output_path(b).generic_string();
-			for (auto& x : b.flags.rest_args) run += " " + x;
+			for (auto& x : b.flags.rest_args) {
+				run += " " + x;
+			}
 			if (!Env::Win32) run = "./" + run;
 			if (!b.flags.silent) printf("Running %s\n", run.c_str());
 			system(run.c_str());
