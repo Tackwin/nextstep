@@ -20,6 +20,7 @@ struct Token {
 		ENTITY_INSTANCE_NAME,
 		BINARY,
 		DOLLAR,
+		END_SEC,
 		COUNT
 	};
 

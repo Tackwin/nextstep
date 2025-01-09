@@ -40,6 +40,7 @@ bool eat_entity_instance_name(
 );
 bool eat_enumeration(parse_express_from_memory_result& res, Read_String file);
 bool eat_binary(parse_express_from_memory_result& res, Read_String file);
+bool eat_endsec(parse_express_from_memory_result& res, Read_String file);
 
 bool next_upper(Read_String file, size_t* cursor);
 bool next_digit(Read_String file, size_t* cursor);
@@ -271,6 +272,24 @@ bool eat_binary(parse_express_from_memory_result& res, Read_String file)
 	token.kind = Token::Kind::BINARY;
 	token.text = { file.data + beg, end - beg };
 	res.tokens.push(token);
+	return !res.error;
+}
+
+bool eat_endsec(parse_express_from_memory_result& res, Read_String file) {
+	if (res.error)
+		return false;
+	eat_whitespace(res, file);
+	if (begins_with_at(file, fromcstr<Read_String>("ENDSEC"), res.cursor)) {
+		Token token;
+		token.kind = Token::Kind::END_SEC;
+		token.text = { file.data + res.cursor, 6 };
+		res.tokens.push(token);
+
+		res.cursor += 6;
+		return true;
+	} else {
+		report_error(res, fromcstr<Read_String>("Expected ENDSEC"));
+	}
 	return !res.error;
 }
 
@@ -850,6 +869,26 @@ bool eat_header_section(parse_express_from_memory_result& res, Read_String file)
 	eat_semicolon(res, file);
 
 	eat_header_entity(res, file);
+	eat_header_entity(res, file);
+	eat_header_entity(res, file);
+
+	while (true)
+	{
+		res.new_branch();
+		if (eat_header_entity(res, file))
+		{
+			res.commit_branch();
+		}
+		else
+		{
+			res.pop_branch();
+			break;
+		}
+	}
+
+	eat_endsec(res, file);
+	eat_semicolon(res, file);
+
 	return !res.error;
 }
 
