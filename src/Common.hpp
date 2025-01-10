@@ -18,27 +18,6 @@ extern u8* g_scratch_buffer;
 #define auto_release_scratch() auto __start_scratch = g_scratch_buffer;\
 defer { g_scratch_buffer = __start_scratch; }
 
-struct Write_String {
-	u8* data = nullptr;
-	size_t size = 0;
-};
-struct Read_String {
-	const u8* data = nullptr;
-	size_t size = 0;
-
-	u8 operator[](size_t i) const {
-		return data[i];
-	}
-};
-struct Write_String16 {
-	u16* data = nullptr;
-	size_t size = 0;
-};
-struct Read_String16 {
-	const u16* data = nullptr;
-	size_t size = 0;
-};
-
 template<typename T>
 T fromcstr(const char* str) {
 	return fromcstr<T>((const u8*)str);
@@ -58,3 +37,31 @@ T fromcstr(const u16* str) {
 
 	return T{ str, n };
 }
+
+struct Write_String {
+	u8* data = nullptr;
+	size_t size = 0;
+};
+struct Read_String {
+	const u8* data = nullptr;
+	size_t size = 0;
+
+
+	Read_String() = default;
+	Read_String(const u8* data, size_t size) : data(data), size(size) {}
+	Read_String(const char* cstr) {
+		*this = fromcstr<Read_String>(cstr);
+	}
+
+	u8 operator[](size_t i) const {
+		return data[i];
+	}
+};
+struct Write_String16 {
+	u16* data = nullptr;
+	size_t size = 0;
+};
+struct Read_String16 {
+	const u16* data = nullptr;
+	size_t size = 0;
+};
