@@ -92,3 +92,18 @@ bool begins_with_at(Read_String a, const char (&b) [N], size_t at) {
 	}
 	return true;
 }
+extern bool operator==(const Read_String& a, const Read_String& b);
+template<size_t N>
+extern bool operator==(const Read_String& a, const char (&cstr)[N]) {
+	if (a.size != N - 1)
+		return false;
+	for (size_t i = 0; i < N - 1; ++i) {
+		if (a[i] != cstr[i])
+			return false;
+	}
+	return true;
+}
+
+extern size_t to_string(size_t n, Write_String& out);
+extern size_t to_string(i64 n, Write_String& out);
+extern size_t parse_size_t(Read_String str);

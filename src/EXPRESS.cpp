@@ -4,7 +4,6 @@
 extern "C" {
 	int _fltused = 0;
 }
-size_t dump_token;
 
 void report_error(parse_express_from_memory_result& res, Read_String msg) {
 	// for (size_t i = 0; i < msg.size; ++i) {
@@ -14,10 +13,39 @@ void report_error(parse_express_from_memory_result& res, Read_String msg) {
 	res.error = true;
 }
 
-using Node_t = size_t;
+struct Node_t {
+	size_t* ref = nullptr;
+	xstd::optional<size_t>* value = nullptr;
 
-using eat_f = bool(parse_express_from_memory_result&, Read_String, Node_t&);
-bool eat_empty(parse_express_from_memory_result& res, Read_String file, Node_t&) {
+	Node_t() {}
+	Node_t(size_t& ref) : ref(&ref) {}
+	Node_t(xstd::optional<size_t>& value) : value(&value) {}
+	Node_t(Node_t& other) : ref(other.ref), value(other.value) {}
+
+	Node_t& operator=(size_t a) {
+		if (ref)
+			*ref = a;
+		if (value) {
+			xstd::optional<size_t>& vvalue = *value;
+			vvalue = a;
+		}
+		return *this;
+	}
+
+	explicit operator size_t() {
+		if (ref)
+			return *ref;
+		if (value) {
+			xstd::optional<size_t>& vvalue = *value;
+			return vvalue.value;
+		}
+		return SIZE_MAX;
+	}
+};
+Node_t dump_token;
+
+using eat_f = bool(parse_express_from_memory_result&, Read_String, Node_t);
+bool eat_empty(parse_express_from_memory_result& res, Read_String file, Node_t) {
 	return !res.error;
 }
 
@@ -26,7 +54,7 @@ bool eat_list(
 	Read_String file,
 	eat_f item,
 	eat_f sep,
-	size_t& out
+	Node_t out
 );
 template<size_t N>
 bool eat_litteral(
@@ -34,43 +62,43 @@ bool eat_litteral(
 	Read_String file,
 	const char (&litteral)[], Token::Kind kind
 );
-bool eat_header_section(parse_express_from_memory_result& res, Read_String file, Node_t& out);
-bool eat_whitespace(parse_express_from_memory_result& res, Read_String file, Node_t& out);
-bool eat_header_entity(parse_express_from_memory_result& res, Read_String file, Node_t& out);
-bool eat_keyword(parse_express_from_memory_result& res, Read_String file, Node_t& out);
+bool eat_header_section(parse_express_from_memory_result& res, Read_String file, Node_t out);
+bool eat_whitespace(parse_express_from_memory_result& res, Read_String file, Node_t out);
+bool eat_header_entity(parse_express_from_memory_result& res, Read_String file, Node_t out);
+bool eat_keyword(parse_express_from_memory_result& res, Read_String file, Node_t out);
 bool eat_user_defined_keyword(
-	parse_express_from_memory_result& res, Read_String file, Node_t& out
+	parse_express_from_memory_result& res, Read_String file, Node_t out
 );
-bool eat_standard_keyword(parse_express_from_memory_result& res, Read_String file, Node_t& out);
-bool eat_parameter(parse_express_from_memory_result& res, Read_String file, Node_t& out);
-bool eat_untyped_parameter(parse_express_from_memory_result& res, Read_String file, Node_t& out);
-bool eat_typed_parameter(parse_express_from_memory_result& res, Read_String file, Node_t& out);
-bool eat_number(parse_express_from_memory_result& res, Read_String file, Node_t& out);
-bool eat_string(parse_express_from_memory_result& res, Read_String file, Node_t& out);
+bool eat_standard_keyword(parse_express_from_memory_result& res, Read_String file, Node_t out);
+bool eat_parameter(parse_express_from_memory_result& res, Read_String file, Node_t out);
+bool eat_untyped_parameter(parse_express_from_memory_result& res, Read_String file, Node_t out);
+bool eat_typed_parameter(parse_express_from_memory_result& res, Read_String file, Node_t out);
+bool eat_number(parse_express_from_memory_result& res, Read_String file, Node_t out);
+bool eat_string(parse_express_from_memory_result& res, Read_String file, Node_t out);
 bool eat_entity_instance_name(
-	parse_express_from_memory_result& res, Read_String file, Node_t& out
+	parse_express_from_memory_result& res, Read_String file, Node_t out
 );
-bool eat_enumeration(parse_express_from_memory_result& res, Read_String file, Node_t &out);
-bool eat_binary(parse_express_from_memory_result& res, Read_String file, Node_t &out);
-bool eat_data_section(parse_express_from_memory_result& res, Read_String file, Node_t &out);
-bool eat_entity_instance_list(parse_express_from_memory_result& res, Read_String file, Node_t &out);
-bool eat_entity_instance(parse_express_from_memory_result& res, Read_String file, Node_t &out);
+bool eat_enumeration(parse_express_from_memory_result& res, Read_String file, Node_t out);
+bool eat_binary(parse_express_from_memory_result& res, Read_String file, Node_t out);
+bool eat_data_section(parse_express_from_memory_result& res, Read_String file, Node_t out);
+bool eat_entity_instance_list(parse_express_from_memory_result& res, Read_String file, Node_t out);
+bool eat_entity_instance(parse_express_from_memory_result& res, Read_String file, Node_t out);
 bool eat_simple_entity_instance(
 	parse_express_from_memory_result& res, Read_String file, Node_t &out
 );
 bool eat_complex_entity_instance(
 	parse_express_from_memory_result& res, Read_String file, Node_t &out
 );
-bool eat_scope(parse_express_from_memory_result& res, Read_String file, Node_t &out);
-bool eat_export_list(parse_express_from_memory_result& res, Read_String file, Node_t &out);
-bool eat_maybe(parse_express_from_memory_result& res, Read_String file, eat_f item, Node_t &out);
+bool eat_scope(parse_express_from_memory_result& res, Read_String file, Node_t out);
+bool eat_export_list(parse_express_from_memory_result& res, Read_String file, Node_t out);
+bool eat_maybe(parse_express_from_memory_result& res, Read_String file, eat_f item, Node_t out);
 
 bool next_upper(Read_String file, size_t* cursor);
 bool next_digit(Read_String file, size_t* cursor);
 bool next_hex(Read_String file, size_t* cursor);
 bool take_digit(Read_String file, size_t* cursor, u8* out);
 
-bool eat_maybe(parse_express_from_memory_result& res, Read_String file, eat_f item, Node_t& out) {
+bool eat_maybe(parse_express_from_memory_result& res, Read_String file, eat_f item, Node_t out) {
 	if (res.error)
 		return false;
 	res.new_branch();
@@ -130,7 +158,7 @@ bool eat_whitespace(parse_express_from_memory_result& res, Read_String file) {
 	return !res.error;
 }
 
-bool eat_export_list(parse_express_from_memory_result& res, Read_String file, Node_t& out) {
+bool eat_export_list(parse_express_from_memory_result& res, Read_String file, Node_t out) {
 	if (res.error)
 		return false;
 
@@ -151,7 +179,7 @@ bool eat_export_list(parse_express_from_memory_result& res, Read_String file, No
 	return !res.error;
 }
 
-bool eat_scope(parse_express_from_memory_result& res, Read_String file, Node_t& out) {
+bool eat_scope(parse_express_from_memory_result& res, Read_String file, Node_t out) {
 	if (res.error)
 		return false;
 
@@ -163,11 +191,11 @@ bool eat_scope(parse_express_from_memory_result& res, Read_String file, Node_t& 
 	return !res.error;
 }
 
-bool eat_simple_record(parse_express_from_memory_result& res, Read_String file, Node_t& out) {
+bool eat_simple_record(parse_express_from_memory_result& res, Read_String file, Node_t out) {
 	if (res.error)
 		return false;
 
-	auto eat_comma = [] (parse_express_from_memory_result& res, Read_String file, Node_t& out) {
+	auto eat_comma = [] (parse_express_from_memory_result& res, Read_String file, Node_t out) {
 		return eat_litteral(res, file, ",", Token::Kind::COMMA);
 	};
 
@@ -175,54 +203,66 @@ bool eat_simple_record(parse_express_from_memory_result& res, Read_String file, 
 	eat_keyword(res, file, node.simple_record.keyword_token);
 	eat_list(res, file, eat_parameter, eat_comma, node.simple_record.parameters);
 	out = res.nodes.size;
-	res.nodes.push(move(node));
+	res.nodes.push(xstd::move(node));
 	return !res.error;
 }
 
 bool eat_simple_entity_instance(
-	parse_express_from_memory_result& res, Read_String file, Node_t& out
+	parse_express_from_memory_result& res, Read_String file, Node_t out
 ) {
 	if (res.error)
 		return false;
 
-	eat_entity_instance_name(res, file, dump_token);
-	eat_litteral(res, file, "=", Token::Kind::EQUAL);
-	eat_maybe(res, file, eat_scope, dump_token);
+	Node node(Node::Kind::ENTITY_INSTANCE);
 
-	eat_simple_record(res, file, dump_token);
+	eat_entity_instance_name(res, file, node.entity_instance.entity_instance_name);
+	eat_litteral(res, file, "=", Token::Kind::EQUAL);
+	eat_maybe(res, file, eat_scope, node.entity_instance.scope);
+
+	eat_simple_record(res, file, node.entity_instance.simple_record);
 
 	eat_litteral(res, file, ";", Token::Kind::SEMICOLON);
+
+	out = res.nodes.size;
+	res.nodes.push(xstd::move(node));
 
 	return !res.error;
 }
 
-bool eat_subsuper_record(parse_express_from_memory_result& res, Read_String file, Node_t& out) {
+bool eat_subsuper_record(parse_express_from_memory_result& res, Read_String file, Node_t out) {
 	if (res.error)
 		return false;
 
-	eat_list(res, file, eat_simple_record, eat_empty, dump_token);
+	eat_list(res, file, eat_simple_record, eat_empty, out);
 	return !res.error;
 }
 
 bool eat_complex_entity_instance(
-	parse_express_from_memory_result& res, Read_String file, Node_t& out
+	parse_express_from_memory_result& res, Read_String file, Node_t out
 ) {
 	if (res.error)
 		return false;
 
-	eat_entity_instance_name(res, file, dump_token);
+	Node node(Node::Kind::ENTITY_INSTANCE);
+
+	eat_entity_instance_name(res, file, node.entity_instance.entity_instance_name);
 	eat_litteral(res, file, "=", Token::Kind::EQUAL);
 
-	eat_maybe(res, file, eat_scope, dump_token);
+	eat_maybe(res, file, eat_scope, node.entity_instance.scope);
 
-	eat_subsuper_record(res, file, dump_token);
+	if (res.error)
+		return false;
+	eat_subsuper_record(res, file, node.entity_instance.subsuper_record);
 	eat_litteral(res, file, ";", Token::Kind::SEMICOLON);
+
+	out = res.nodes.size;
+	res.nodes.push(xstd::move(node));
 
 	return !res.error;
 }
 
 bool eat_entity_instance_name(
-	parse_express_from_memory_result& res, Read_String file, Node_t& out
+	parse_express_from_memory_result& res, Read_String file, Node_t out
 ) {
 	if (res.error)
 		return false;
@@ -247,13 +287,13 @@ bool eat_entity_instance_name(
 	token.text = { file.data + beg, end - beg };
 	res.tokens.push(token);
 
-	node.entity_instance_name = token.text;
+	node.integer = parse_size_t({ token.text.data + 1, token.text.size - 1 });
 	out = res.nodes.size;
-	res.nodes.push(move(node));
+	res.nodes.push(xstd::move(node));
 	return !res.error;
 }
 
-bool eat_binary(parse_express_from_memory_result& res, Read_String file, Node_t& out)
+bool eat_binary(parse_express_from_memory_result& res, Read_String file, Node_t out)
 {
 	if (res.error)
 		return false;
@@ -306,11 +346,11 @@ bool eat_binary(parse_express_from_memory_result& res, Read_String file, Node_t&
 	Node node(Node::Kind::BINARY);
 	node.binary = { file.data + beg + 1, end - beg - 2 };
 	out = res.nodes.size;
-	res.nodes.push(move(node));
+	res.nodes.push(xstd::move(node));
 	return !res.error;
 }
 
-bool eat_entity_instance(parse_express_from_memory_result& res, Read_String file, Node_t& out) {
+bool eat_entity_instance(parse_express_from_memory_result& res, Read_String file, Node_t out) {
 	if (res.error)
 		return false;
 
@@ -325,7 +365,7 @@ bool eat_entity_instance(parse_express_from_memory_result& res, Read_String file
 	return !res.error;
 }
 
-bool eat_entity_instance_list(parse_express_from_memory_result& res, Read_String file, Node_t& out)
+bool eat_entity_instance_list(parse_express_from_memory_result& res, Read_String file, Node_t out)
 {
 	if (res.error)
 		return false;
@@ -336,7 +376,7 @@ bool eat_entity_instance_list(parse_express_from_memory_result& res, Read_String
 	return !res.error;
 }
 
-bool eat_data_section(parse_express_from_memory_result& res, Read_String file, Node_t& out) {
+bool eat_data_section(parse_express_from_memory_result& res, Read_String file, Node_t out) {
 	if (res.error)
 		return false;
 
@@ -347,7 +387,7 @@ bool eat_data_section(parse_express_from_memory_result& res, Read_String file, N
 	return !res.error;
 }
 
-bool eat_enumeration(parse_express_from_memory_result& res, Read_String file, Node_t& out)
+bool eat_enumeration(parse_express_from_memory_result& res, Read_String file, Node_t out)
 {
 	if (res.error)
 		return false;
@@ -395,11 +435,11 @@ bool eat_enumeration(parse_express_from_memory_result& res, Read_String file, No
 	Node node(Node::Kind::ENUMERATION);
 	node.enumeration = { file.data + beg + 1, end - beg - 2 };
 	out = res.nodes.size;
-	res.nodes.push(move(node));
+	res.nodes.push(xstd::move(node));
 	return !res.error;
 }
 
-bool eat_string(parse_express_from_memory_result& res, Read_String file, Node_t& out) {
+bool eat_string(parse_express_from_memory_result& res, Read_String file, Node_t out) {
 	if (res.error)
 		return false;
 	Token token;
@@ -449,11 +489,11 @@ bool eat_string(parse_express_from_memory_result& res, Read_String file, Node_t&
 
 	node.string = { file.data + beg + 1, end - beg - 2 };
 	out = res.nodes.size;
-	res.nodes.push(move(node));
+	res.nodes.push(xstd::move(node));
 	return !res.error;
 }
 
-bool eat_number(parse_express_from_memory_result& res, Read_String file, Node_t& out)
+bool eat_number(parse_express_from_memory_result& res, Read_String file, Node_t out)
 {
 	if (res.error)
 		return false;
@@ -493,7 +533,7 @@ bool eat_number(parse_express_from_memory_result& res, Read_String file, Node_t&
 
 		out = res.nodes.size;
 		node.number = sign * integer;
-		res.nodes.push(move(node));
+		res.nodes.push(xstd::move(node));
 		return true;
 	}
 
@@ -506,7 +546,7 @@ bool eat_number(parse_express_from_memory_result& res, Read_String file, Node_t&
 
 		node.number = sign * integer;
 		out = res.nodes.size;
-		res.nodes.push(move(node));
+		res.nodes.push(xstd::move(node));
 		return true;
 	}
 
@@ -524,7 +564,7 @@ bool eat_number(parse_express_from_memory_result& res, Read_String file, Node_t&
 
 		node.number = sign * (integer + frac);
 		out = res.nodes.size;
-		res.nodes.push(move(node));
+		res.nodes.push(xstd::move(node));
 		return true;
 	}
 
@@ -537,7 +577,7 @@ bool eat_number(parse_express_from_memory_result& res, Read_String file, Node_t&
 
 		node.number = sign * (integer + frac);
 		out = res.nodes.size;
-		res.nodes.push(move(node));
+		res.nodes.push(xstd::move(node));
 		return true;
 	}
 
@@ -563,6 +603,9 @@ bool eat_number(parse_express_from_memory_result& res, Read_String file, Node_t&
 	}
 
 	auto pow10 = [](size_t exp, auto& pow10) {
+		if (exp == 0) {
+			return 1;
+		}
 		if (exp == 1) {
 			return 10;
 		}
@@ -576,9 +619,12 @@ bool eat_number(parse_express_from_memory_result& res, Read_String file, Node_t&
 	token.text = { file.data + beg, res.cursor - beg };
 	res.tokens.push(token);
 
-	node.number = sign * (integer + frac) * pow10(exp, pow10);
+	if (sign > 0)
+		node.number = sign * (integer + frac) * pow10(exp, pow10);
+	else
+		node.number = sign * (integer + frac) / pow10(exp, pow10);
 	out = res.nodes.size;
-	res.nodes.push(move(node));
+	res.nodes.push(xstd::move(node));
 	return !res.error;
 }
 
@@ -587,7 +633,7 @@ bool eat_list(
 	Read_String file,
 	eat_f item,
 	eat_f sep,
-	Node_t& out
+	Node_t out
 ) {
 	if (res.error)
 		return false;
@@ -595,10 +641,10 @@ bool eat_list(
 	eat_litteral(res, file, "(", Token::Kind::LEFT_PARENTHESIS);
 	bool left_on_comma = false;
 	Node node(Node::Kind::LIST);
-	Node_t item_node = {};
+	size_t item_node;
 	while (eat_maybe(res, file, item, item_node)) {
 		node.list.push(item_node);
-		item_node = {};
+		item_node = SIZE_MAX;
 		left_on_comma = false;
 		if (eat_maybe(res, file, sep, dump_token)) {
 			left_on_comma = true;
@@ -608,7 +654,7 @@ bool eat_list(
 	}
 	eat_litteral(res, file, ")", Token::Kind::RIGHT_PARENTHESIS);
 	out = res.nodes.size;
-	res.nodes.push(move(node));
+	res.nodes.push(xstd::move(node));
 	return !res.error;
 }
 
@@ -668,7 +714,7 @@ bool next_digit(Read_String file, size_t* cursor) {
 	return false;
 }
 
-bool eat_user_defined_keyword(parse_express_from_memory_result& res, Read_String file, Node_t& out)
+bool eat_user_defined_keyword(parse_express_from_memory_result& res, Read_String file, Node_t out)
 {
 	if (res.error)
 		return false;
@@ -702,7 +748,7 @@ bool eat_user_defined_keyword(parse_express_from_memory_result& res, Read_String
 	return !res.error;
 }
 
-bool eat_standard_keyword(parse_express_from_memory_result& res, Read_String file, Node_t& out) {
+bool eat_standard_keyword(parse_express_from_memory_result& res, Read_String file, Node_t out) {
 	if (res.error)
 		return false;
 	eat_whitespace(res, file);
@@ -731,18 +777,18 @@ bool eat_standard_keyword(parse_express_from_memory_result& res, Read_String fil
 	return !res.error;
 }
 
-bool eat_omitted_parameter(parse_express_from_memory_result& res, Read_String file, Node_t& out) {
+bool eat_omitted_parameter(parse_express_from_memory_result& res, Read_String file, Node_t out) {
 	if (res.error)
 		return false;
 	out = res.nodes.size;
 	Node node(Node::Kind::TOKEN);
 	node.token = res.tokens.size;
-	res.nodes.push(move(node));
+	res.nodes.push(xstd::move(node));
 	eat_litteral(res, file, "*", Token::Kind::OMITTED_PARAMETER);
 	return !res.error;
 }
 
-bool eat_untyped_parameter(parse_express_from_memory_result& res, Read_String file, Node_t& out) {
+bool eat_untyped_parameter(parse_express_from_memory_result& res, Read_String file, Node_t out) {
 	if (res.error)
 		return false;
 
@@ -774,7 +820,7 @@ bool eat_untyped_parameter(parse_express_from_memory_result& res, Read_String fi
 		return true;
 	}
 	
-	auto eat_comma = [] (parse_express_from_memory_result& res, Read_String file, Node_t&) {
+	auto eat_comma = [] (parse_express_from_memory_result& res, Read_String file, Node_t) {
 		return eat_litteral(res, file, ",", Token::Kind::COMMA);
 	};
 	if (eat_list(res, file, eat_parameter, eat_comma, out)) {
@@ -783,19 +829,22 @@ bool eat_untyped_parameter(parse_express_from_memory_result& res, Read_String fi
 	return !res.error;
 }
 
-bool eat_typed_parameter(parse_express_from_memory_result& res, Read_String file, Node_t& out) {
+bool eat_typed_parameter(parse_express_from_memory_result& res, Read_String file, Node_t out) {
 	if (res.error)
 		return false;
 
-	eat_keyword(res, file, dump_token);
+	Node node(Node::Kind::TYPED_PARAMETER);
+	eat_keyword(res, file, node.typed_parameter.keyword_token);
 	eat_litteral(res, file, "(", Token::Kind::LEFT_PARENTHESIS);
-	eat_parameter(res, file, dump_token);
+	eat_parameter(res, file, node.typed_parameter.parameter);
 	eat_litteral(res, file, ")", Token::Kind::RIGHT_PARENTHESIS);
 
+	out = res.nodes.size;
+	res.nodes.push(xstd::move(node));
 	return !res.error;
 }
 
-bool eat_parameter(parse_express_from_memory_result& res, Read_String file, Node_t& out) {
+bool eat_parameter(parse_express_from_memory_result& res, Read_String file, Node_t out) {
 	if (res.error)
 		return false;
 	
@@ -813,7 +862,7 @@ bool eat_parameter(parse_express_from_memory_result& res, Read_String file, Node
 	return !res.error;
 }
 
-bool eat_keyword(parse_express_from_memory_result& res, Read_String file, Node_t& out) {
+bool eat_keyword(parse_express_from_memory_result& res, Read_String file, Node_t out) {
 	if (res.error)
 		return false;
 	eat_whitespace(res, file);
@@ -831,13 +880,13 @@ bool eat_keyword(parse_express_from_memory_result& res, Read_String file, Node_t
 	return !res.error;
 }
 
-bool eat_header_entity(parse_express_from_memory_result& res, Read_String file, Node_t& out) {
+bool eat_header_entity(parse_express_from_memory_result& res, Read_String file, Node_t out) {
 	if (res.error)
 		return false;
 
 	eat_keyword(res, file, dump_token);
 
-	auto eat_comma = [] (parse_express_from_memory_result& res, Read_String file, Node_t&) {
+	auto eat_comma = [] (parse_express_from_memory_result& res, Read_String file, Node_t) {
 		return eat_litteral(res, file, ",", Token::Kind::COMMA);
 	};
 	eat_list(res, file, eat_parameter, eat_comma, dump_token);
@@ -846,7 +895,7 @@ bool eat_header_entity(parse_express_from_memory_result& res, Read_String file, 
 	return !res.error;
 }
 
-bool eat_header_section(parse_express_from_memory_result& res, Read_String file, Node_t& out) {
+bool eat_header_section(parse_express_from_memory_result& res, Read_String file, Node_t out) {
 	if (res.error)
 		return false;
 
@@ -863,7 +912,7 @@ bool eat_header_section(parse_express_from_memory_result& res, Read_String file,
 	return !res.error;
 }
 
-bool eat_exchange_file(parse_express_from_memory_result& res, Read_String file, Node_t& out) {
+bool eat_exchange_file(parse_express_from_memory_result& res, Read_String file, Node_t out) {
 	if (res.error)
 		return false;
 

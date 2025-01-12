@@ -2,6 +2,7 @@
 #include "EXPRESS.hpp"
 
 #include "Platform.hpp"
+#include "AP242.hpp"
 
 extern "C" void start() {
 
@@ -16,14 +17,19 @@ extern "C" void start() {
 		print(file);
 		print(fromcstr<Read_String>("\n"));
 
-		Write_String file_contents = { g_scratch_buffer, g_scratch_buffer_size };
-		g_scratch_buffer += file_contents.size;
+		Write_String file_contents;
+		file_contents.size = get_file_size({ file.data, file.size });
+		file_contents.data = alloc<u8>(file_contents.size);
+		defer {
+			free(file_contents.data);
+		};
 		auto result = read_entire_file_into(file, file_contents);
 		if (result != read_entire_file_into_result::success) {
 			print(fromcstr<Read_String>("\nFailed to open file\n"));
 			return;
 		}
 
+		double t1 = monotonic_seconds();
 		auto res = parse_express_from_memory({ file_contents.data, file_contents.size });
 		if (res.error) {
 			print(fromcstr<Read_String>("\nError parsing file\n"));
@@ -34,15 +40,13 @@ extern "C" void start() {
 			return;
 		} else {
 			print("\nParsed file\n");
+			A242 a242;
+			compile_express_from_memory(res, a242);
+			double t2 = monotonic_seconds();
+			print("Time: ");
+			print((size_t)((t2 - t1) * 1000));
+			print("ms\n");
 
-			for (size_t i = 0; i < res.nodes.size; i += 1) {
-				if (res.nodes[i].kind != Node::Kind::STRING)
-					continue;
-				if (res.nodes[i].string.size > 0) {
-					print(res.nodes[i].string);
-					print("\n");
-				}
-			}
 		}
 	}
 	else if (is_directory(file)) {
@@ -54,6 +58,9 @@ extern "C" void start() {
 
 		DynArray<size_t> failed;
 		parse_express_from_memory_result res;
+		A242 a242;
+		
+		double big_t1 = monotonic_seconds();
 
 		for (size_t i = 0; i < files.size; ++i) {
 			print("  ");
@@ -61,6 +68,7 @@ extern "C" void start() {
 			print("\n");
 
 			auto_release_scratch();
+			double t1 = monotonic_seconds();
 			Write_String file_contents;
 			file_contents.size = get_file_size({ files[i].data, files[i].size });
 			// if (file_contents.size > 1024 * 1024)
@@ -69,7 +77,6 @@ extern "C" void start() {
 			defer {
 				free(file_contents.data);
 			};
-
 
 			auto result = read_entire_file_into({ files[i].data, files[i].size }, file_contents);
 			g_scratch_buffer += file_contents.size;
@@ -89,6 +96,14 @@ extern "C" void start() {
 				}
 				failed.push(i);
 			}
+
+			a242.clear();
+			compile_express_from_memory(res, a242);
+			double t2 = monotonic_seconds();
+			print("    Time: ");
+			print((size_t)((t2 - t1) * 1000));
+			print("ms\n");
+			print("\n");
 		}
 
 		if (failed.size > 0) {
@@ -98,6 +113,14 @@ extern "C" void start() {
 				print("\n");
 			}
 		}
+		double big_t2 = monotonic_seconds();
+		print("Total time: ");
+		print((size_t)((big_t2 - big_t1) * 1000));
+		print("ms\n");
+		print("\n");
+		print("Time per file: ");
+		print((size_t)(((big_t2 - big_t1) / files.size) * 1000));
+		print("ms\n");
 	}
 	else {
 		print(fromcstr<Read_String>("File or directory not found: "));

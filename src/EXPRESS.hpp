@@ -2,6 +2,7 @@
 
 #include "Common.hpp"
 #include "Memory.hpp"
+#include "Templates.hpp"
 
 struct Token {
 	enum class Kind : u8 {
@@ -48,20 +49,32 @@ struct Node {
 		SIMPLE_RECORD,
 		ENUMERATION,
 		BINARY,
+		TYPED_PARAMETER,
+		ENTITY_INSTANCE,
 	};
 	Kind kind;
 	union {
 		size_t token;
-		SSO_Array<size_t, 3> list;
+		SSO_Array<size_t, 4> list;
 		double number;
+		size_t integer;
 		Read_String string;
-		Read_String entity_instance_name;
 		Read_String enumeration;
 		Read_String binary;
 		struct {
 			size_t keyword_token;
 			size_t parameters;
 		} simple_record;
+		struct {
+			size_t keyword_token;
+			size_t parameter;
+		} typed_parameter;
+		struct {
+			size_t entity_instance_name;
+			xstd::optional<size_t> scope;
+			xstd::optional<size_t> simple_record;
+			xstd::optional<size_t> subsuper_record;
+		} entity_instance;
 	};
 
 	Node() {
@@ -71,23 +84,20 @@ struct Node {
 		memset(this, 0, sizeof(Node));
 		this->kind = kind;
 	}
-	Node(const Node& other) {
-		*this = other;
-	}
-	Node& operator=(const Node& other) {
-		if (this == &other) return *this;
-		memcpy(this, &other, sizeof(Node));
-		return *this;
-	}
 	Node(Node&& other) {
 		*this = (Node&&)other;
 	}
 	Node& operator=(Node&& other) {
 		if (this == &other) return *this;
 		memcpy(this, &other, sizeof(Node));
+		memset(&other, 0, sizeof(Node));
 		return *this;
 	}
-	~Node() {}
+	~Node() {
+		if (kind == Kind::LIST) {
+			list.~SSO_Array();
+		}
+	}
 };
 
 struct parse_express_from_memory_result {
@@ -125,12 +135,12 @@ struct parse_express_from_memory_result {
 		branches.size -= 1;
 	}
 	void clear() {
-		tokens.size = 0;
-		diagnostic.size = 0;
+		tokens.clear();
+		diagnostic.clear();
 		cursor = 0;
-		nodes.size = 0;
+		nodes.clear();
 		error = false;
-		branches.size = 0;
+		branches.clear();
 	}
 };
 [[nodiscard]]

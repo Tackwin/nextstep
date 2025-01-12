@@ -6,16 +6,26 @@
 
 template<typename T>
 struct DynArray;
-
 template<typename T>
 T* alloc(size_t n) {
-	return (T*)malloc(n * sizeof(T));
+	T* ptr = (T*)malloc(n * sizeof(T));
+	new (ptr) T[n];
+	return ptr;
+}
+template<typename T>
+T* alloc() {
+	return ::alloc<T>(1);
 }
 template<typename T>
 T* talloc(size_t n) {
 	T* ptr = (T*)g_scratch_buffer;
 	g_scratch_buffer += n * sizeof(T);
+	new (ptr) T[n];
 	return ptr;
+}
+template<typename T>
+T* talloc() {
+	return ::talloc<T>(1);
 }
 
 extern void* malloc(size_t n);
@@ -24,6 +34,8 @@ extern void free(void* p);
 // =====================
 
 extern void print(Read_String str);
+extern void print(size_t n);
+extern void print(i64 n);
 
 // =====================
 
@@ -52,3 +64,6 @@ extern size_t widen(Read_String in, Write_String16 out);
 extern size_t narrow(Read_String16 in, Write_String out);
 
 extern void get_command_line(Write_String& out);
+
+// =====================
+extern double monotonic_seconds();

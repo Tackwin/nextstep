@@ -8,8 +8,7 @@ void free(void* p) {
 	VirtualFree(p, 0, MEM_RELEASE);
 }
 
-void print(Read_String str)
-{
+void print(Read_String str) {
 	auto_release_scratch();
 	Write_String16 str16 = { (u16*)g_scratch_buffer, g_scratch_buffer_size };
 	str16.size = widen(str, str16);
@@ -18,6 +17,23 @@ void print(Read_String str)
 	HANDLE h = GetStdHandle(STD_OUTPUT_HANDLE);
 	WriteConsoleW(h, str16.data, str16.size, nullptr, nullptr);
 }
+void print(size_t n) {
+	auto_release_scratch();
+	Write_String str = { g_scratch_buffer, g_scratch_buffer_size };
+	str.size = to_string(n, str);
+	g_scratch_buffer += str.size;
+
+	print({ str.data, str.size });
+}
+void print(i64 n) {
+	auto_release_scratch();
+	Write_String str = { g_scratch_buffer, g_scratch_buffer_size };
+	str.size = to_string(n, str);
+	g_scratch_buffer += str.size;
+
+	print({ str.data, str.size });
+}
+
 
 bool is_file(Read_String path) {
 	auto_release_scratch();
@@ -335,4 +351,14 @@ size_t narrow(Read_String16 in, Write_String out) {
 		CP_UTF8, 0, (LPCWCH)in.data, in.size, (LPSTR)out.data, out.size, nullptr, nullptr
 	);
 	return result;
+}
+
+double monotonic_seconds() {
+	LARGE_INTEGER freq;
+	QueryPerformanceFrequency(&freq);
+
+	LARGE_INTEGER count;
+	QueryPerformanceCounter(&count);
+
+	return (double)count.QuadPart / (double)freq.QuadPart;
 }
