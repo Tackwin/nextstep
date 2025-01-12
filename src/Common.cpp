@@ -11,9 +11,10 @@ extern "C" void* memcpy(void* dst, const void* src, size_t n) {
 	return dst;
 }
 
-extern "C" void memset(void* dst, u8 value, size_t n) {
+extern "C" void* memset(void* dst, int value, size_t n) {
 	for (size_t i = 0; i < n; ++i) {
-		((u8*)dst)[i] = value;
+		((u8*)dst)[i] = (u8)value;
 	}
+	return dst;
 }
 

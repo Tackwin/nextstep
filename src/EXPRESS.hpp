@@ -3,7 +3,6 @@
 #include "Common.hpp"
 #include "Memory.hpp"
 
-
 struct Token {
 	enum class Kind : u8 {
 		ISO_10303_21 = 0,
@@ -41,24 +40,37 @@ struct Token {
 
 struct Node {
 	enum class Kind {
-		ENTITY_INSTANCE,
+		TOKEN,
+		LIST,
+		NUMBER,
+		STRING,
+		ENTITY_INSTANCE_NAME,
 		SIMPLE_RECORD,
+		ENUMERATION,
+		BINARY,
 	};
 	Kind kind;
 	union {
+		size_t token;
+		SSO_Array<size_t, 3> list;
+		double number;
+		Read_String string;
+		Read_String entity_instance_name;
+		Read_String enumeration;
+		Read_String binary;
 		struct {
-			size_t instance_name;
-			size_t scope = SIZE_MAX;
-			size_t simple_record = SIZE_MAX;
-			size_t subsuper_record = SIZE_MAX;
-		} entity_instance;
-		union {
-			size_t keyword;
-			SSO_Array<size_t, 3> parameters;
+			size_t keyword_token;
+			size_t parameters;
 		} simple_record;
 	};
 
-	Node() {}
+	Node() {
+		memset(this, 0, sizeof(Node));
+	}
+	Node(Kind kind) {
+		memset(this, 0, sizeof(Node));
+		this->kind = kind;
+	}
 	Node(const Node& other) {
 		*this = other;
 	}
@@ -77,6 +89,7 @@ struct Node {
 	}
 	~Node() {}
 };
+
 struct parse_express_from_memory_result {
 	DynArray<Read_String> diagnostic;
 	bool error = false;
@@ -84,8 +97,6 @@ struct parse_express_from_memory_result {
 	size_t cursor = 0;
 
 	DynArray<Node> nodes;
-	DynArray<Node> temp_nodes;
-
 	DynArray<Token> tokens;
 	struct Branch {
 		size_t token_index = 0;

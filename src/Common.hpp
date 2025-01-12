@@ -22,3 +22,23 @@ extern u8* g_scratch_buffer;
 defer { g_scratch_buffer = __start_scratch; }
 
 extern "C" void* memcpy(void* dst, const void* src, size_t n);
+extern "C" void* memset(void* dst, int value, size_t n);
+
+
+// remove reference
+template<typename T>
+struct remove_reference { using type = T; };
+
+template<typename T>
+struct remove_reference<T&> { using type = T; };
+
+template<typename T>
+struct remove_reference<T&&> { using type = T; };
+
+template<typename T>
+using remove_reference_t = remove_reference<T>::type;
+
+template<typename T>
+remove_reference_t<T>&& move(T&& t) {
+	return (remove_reference_t<T>&&)t;
+}

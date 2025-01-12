@@ -32,6 +32,17 @@ extern "C" void start() {
 				print("\n");
 			}
 			return;
+		} else {
+			print("\nParsed file\n");
+
+			for (size_t i = 0; i < res.nodes.size; i += 1) {
+				if (res.nodes[i].kind != Node::Kind::STRING)
+					continue;
+				if (res.nodes[i].string.size > 0) {
+					print(res.nodes[i].string);
+					print("\n");
+				}
+			}
 		}
 	}
 	else if (is_directory(file)) {

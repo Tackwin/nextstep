@@ -300,6 +300,10 @@ void get_command_line(Write_String& out) {
 }
 
 size_t widen(Read_String in, Write_String16 out) {
+	if (in.size == 0) {
+		out.size = 0;
+		return 0;
+	}
 	DWORD result = MultiByteToWideChar(
 		CP_UTF8, 0, (LPCCH)in.data, in.size, (LPWSTR)out.data, out.size
 	);

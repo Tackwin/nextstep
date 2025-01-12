@@ -113,7 +113,7 @@ struct SSO_Array {
 	}
 
 	SSO_Array(SSO_Array&& other) {
-		*this = (SSO_Array&&)other;
+		*this = move(other);
 	}
 	SSO_Array& operator=(SSO_Array&& other) {
 		if (this == &other) return *this;
@@ -139,7 +139,10 @@ struct SSO_Array {
 	}
 
 	T* push(T t) {
-		if (size >= capacity) {
+		if (size < N) {
+			capacity = size + 1;
+		}
+		else if (size >= capacity) {
 			reserve(capacity * 2 + 1);
 		}
 
