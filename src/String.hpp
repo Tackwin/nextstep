@@ -107,3 +107,5 @@ extern bool operator==(const Read_String& a, const char (&cstr)[N]) {
 extern size_t to_string(size_t n, Write_String& out);
 extern size_t to_string(i64 n, Write_String& out);
 extern size_t parse_size_t(Read_String str);
+extern bool case_insensitive_compare(Read_String a, Read_String b);
+extern size_t case_insenstive_hash(Read_String str);

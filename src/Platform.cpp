@@ -1,4 +1,5 @@
 #include "Platform.hpp"
+#include "Memory.hpp"
 #include <Windows.h>
 
 void* malloc(size_t n) {

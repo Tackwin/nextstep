@@ -137,3 +137,20 @@ size_t parse_size_t(Read_String str) {
 	}
 	return n;
 }
+
+bool case_insensitive_compare(Read_String a, Read_String b) {
+	if (a.size != b.size)
+		return false;
+	for (size_t i = 0; i < a.size; ++i) {
+		if (a[i] != b[i] && (a[i] | 0x20) != (b[i] | 0x20))
+			return false;
+	}
+	return true;
+}
+size_t case_insenstive_hash(Read_String str) {
+	size_t h = 0;
+	for (size_t i = 0; i < str.size; ++i) {
+		h = h * 31 + (str[i] | 0x20);
+	}
+	return h;
+}
