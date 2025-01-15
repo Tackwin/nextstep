@@ -57,6 +57,10 @@ struct DynArray {
 
 	T* push(T t) {
 		if (size >= capacity) {
+			size_t new_capacity = capacity * 2 + 1;
+			if (new_capacity * sizeof(T) < 1024*4) {
+				new_capacity = (1024*4 + sizeof(T) - 1) / sizeof(T);
+			}
 			reserve(capacity * 2 + 1);
 		}
 

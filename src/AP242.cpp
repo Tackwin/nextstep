@@ -264,6 +264,8 @@ compile_signature(Conic) {
 		// ellipse,
 		// hyperbola,
 		// parabola
+
+		return nullptr;
 	}
 
 	print("A conic by itself should never be instantiated\n");
@@ -328,6 +330,33 @@ compile_signature(Edge_Curve) {
 	
 	A242::Edge_Curve* ptr = a242.arena.take<A242::Edge_Curve>(xstd::move(edge_curve));
 	a242.edge_curves.push(ptr);
+	return ptr;
+}
+
+compile_signature(Cylindrical_Surface) {
+	A242::Cylindrical_Surface surface;
+	const Node& param_list = out.nodes[parameters];
+	if (param_list.list.size != 3)
+		return nullptr;
+
+	const Node& name = out.nodes[param_list.list[0]];
+	surface.name = name.string;
+	if (name.kind != Node::Kind::STRING)
+		return nullptr;
+
+	const Node& placement_node = out.nodes[param_list.list[1]];
+	surface.position = get_call(Axis2_Placement_3d, out, a242, placement_node.integer);
+	if (!surface.position)
+		return nullptr;
+
+	const Node& radius_node = out.nodes[param_list.list[2]];
+	surface.radius = (float)radius_node.number;
+	if (radius_node.kind != Node::Kind::NUMBER)
+		return nullptr;
+
+	A242::Cylindrical_Surface* ptr =
+		a242.arena.take<A242::Cylindrical_Surface>(xstd::move(surface));
+	a242.cylindrical_surfaces.push(ptr);
 	return ptr;
 }
 
@@ -419,20 +448,9 @@ void compile_express_from_memory(const parse_express_from_memory_result& out, A2
 		if (is_type<A242::Edge_Curve>(out, a242, i)) {
 			get_call(Edge_Curve, out, a242, i);
 		}
-	}
-
-	for (size_t i = 0; i < a242.circles.size; i += 1) {
-		print("Circle: ");
-		print(a242.circles[i]->name);
-		print(", center: ");
-		print((i64)(1000 * a242.circles[i]->position->location->x));
-		print(", ");
-		print((i64)(1000 * a242.circles[i]->position->location->y));
-		print(", ");
-		print((i64)(1000 * a242.circles[i]->position->location->z));
-		print(" mm, radius: ");
-		print((i64)(1000 * a242.circles[i]->radius));
-		print(" mm\n");
+		if (is_type<A242::Cylindrical_Surface>(out, a242, i)) {
+			get_call(Cylindrical_Surface, out, a242, i);
+		}
 	}
 
 }

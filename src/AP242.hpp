@@ -72,6 +72,9 @@ struct A242 {
 	};
 	struct_A242(Plane, Elementary_Surface_Pack) {
 	};
+	struct_A242(Cylindrical_Surface, Elementary_Surface_Pack) {
+		float radius;
+	};
 
 	struct_A242(Detailed_Geometric_Model_Element, Representation_Item_Pack) {
 	};
@@ -93,6 +96,7 @@ struct A242 {
 	};
 #undef struct_A242
 
+	DynArray<Cylindrical_Surface*> cylindrical_surfaces;
 	DynArray<Edge_Curve*> edge_curves;
 	DynArray<Curve*> curves;
 	DynArray<Circle*> circles;
