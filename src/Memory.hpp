@@ -16,6 +16,19 @@ extern void* malloc(size_t n);
 extern void free(void* p);
 
 template<typename T>
+struct View {
+	T* data = nullptr;
+	size_t size = 0;
+
+	T& operator[](size_t i) {
+		return data[i];
+	}
+	const T& operator[](size_t i) const {
+		return data[i];
+	}
+};
+
+template<typename T>
 struct DynArray {
 	T* data = nullptr;
 	size_t size = 0;

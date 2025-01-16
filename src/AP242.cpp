@@ -272,9 +272,42 @@ compile_signature(Conic) {
 	return nullptr;
 }
 
+compile_signature(Vector) {
+	if (type != "VECTOR") {
+		return nullptr;
+	}
+
+	A242::Vector vector;
+	const Node& param_list = out.nodes[parameters];
+	if (param_list.list.size != 3)
+		return nullptr;
+
+	const Node& name = out.nodes[param_list.list[0]];
+	vector.name = name.string;
+	if (name.kind != Node::Kind::STRING)
+		return nullptr;
+
+	const Node& orientation_node = out.nodes[param_list.list[1]];
+	vector.orientation = get_call(Direction, out, a242, orientation_node.integer);
+	if (!vector.orientation)
+		return nullptr;
+
+	const Node& magnitude_node = out.nodes[param_list.list[2]];
+	vector.magnitude = (float)magnitude_node.number;
+	if (magnitude_node.kind != Node::Kind::NUMBER)
+		return nullptr;
+	
+	A242::Vector* ptr = a242.arena.take<A242::Vector>(xstd::move(vector));
+	a242.vectors.push(ptr);
+	return ptr;
+}
+
+compile_signature(Line);
+
 compile_signature(Curve) {
 	if (type != "CURVE") {
-		// line,
+		if (auto ptr = compile_Line(out, a242, type, parameters); ptr)
+			return (A242::Curve*)ptr;
 		if (auto ptr = compile_Conic(out, a242, type, parameters); ptr)
 			return (A242::Curve*)ptr;
 		// conic,
@@ -290,6 +323,119 @@ compile_signature(Curve) {
 	
 	print("A curve by itself should never be instantiated\n");
 	return nullptr;
+}
+
+compile_signature(Oriented_Edge);
+compile_signature(Edge_Curve);
+
+compile_signature(Edge) {
+	if (type != "EDGE") {
+		if (auto ptr = compile_Oriented_Edge(out, a242, type, parameters); ptr)
+			return (A242::Edge*)ptr;
+		if (auto ptr = compile_Edge_Curve(out, a242, type, parameters); ptr)
+			return (A242::Edge*)ptr;
+		// subedge
+	}
+	return nullptr;
+}
+
+compile_signature(Oriented_Edge) {
+	if (type != "ORIENTED_EDGE") {
+		return nullptr;
+	}
+	A242::Oriented_Edge oriented_edge;
+
+	const Node& param_list = out.nodes[parameters];
+	if (param_list.list.size != 5)
+		return nullptr;
+
+	const Node& name = out.nodes[param_list.list[0]];
+	oriented_edge.name = name.string;
+
+	const Node& edge_start = out.nodes[param_list.list[1]];
+	// omitted
+
+	const Node& edge_end = out.nodes[param_list.list[2]];
+	// omitted
+
+	const Node& edge_geometry = out.nodes[param_list.list[3]];
+	oriented_edge.edge_element = get_call(Edge, out, a242, edge_geometry.integer);
+	if (!oriented_edge.edge_element)
+		return nullptr;
+
+	const Node& orientation = out.nodes[param_list.list[4]];
+	oriented_edge.orientation = orientation.enumeration == "T";
+	if (orientation.kind != Node::Kind::ENUMERATION)
+		return nullptr;
+
+	A242::Oriented_Edge* ptr = a242.arena.take<A242::Oriented_Edge>(xstd::move(oriented_edge));
+	a242.oriented_edges.push(ptr);
+	return ptr;
+}
+
+compile_signature(Line) {
+	if (type != "LINE") {
+		return nullptr;
+	}
+
+	A242::Line line;
+	const Node& param_list = out.nodes[parameters];
+	if (param_list.list.size != 3)
+		return nullptr;
+
+	const Node& name = out.nodes[param_list.list[0]];
+	line.name = name.string;
+	if (name.kind != Node::Kind::STRING)
+		return nullptr;
+
+	const Node& point_node = out.nodes[param_list.list[1]];
+	line.point = get_call(Cartesian_Point, out, a242, point_node.integer);
+	if (!line.point)
+		return nullptr;
+
+	const Node& direction_node = out.nodes[param_list.list[2]];
+	line.line_direction = get_call(Vector, out, a242, direction_node.integer);
+	if (!line.line_direction)
+		return nullptr;
+
+	A242::Line* ptr = a242.arena.take<A242::Line>(xstd::move(line));
+	a242.lines.push(ptr);
+	return ptr;
+}
+
+compile_signature(Edge_Loop) {
+	if (type != "EDGE_LOOP") {
+		return nullptr;
+	}
+
+	A242::Edge_Loop edge_loop;
+	const Node& param_list = out.nodes[parameters];
+	if (param_list.list.size != 2)
+		return nullptr;
+
+	const Node& name = out.nodes[param_list.list[0]];
+	edge_loop.name = name.string;
+	if (name.kind != Node::Kind::STRING)
+		return nullptr;
+
+	const Node& edge_list = out.nodes[param_list.list[1]];
+	if (edge_list.kind != Node::Kind::LIST)
+		return nullptr;
+
+	size_t n = edge_list.list.size;
+	edge_loop.edge_list.data = a242.arena.alloc<A242::Oriented_Edge*>(n);
+	edge_loop.edge_list.size = n;
+
+	for (size_t i = 0; i < n; i += 1) {
+		const Node& edge_node = out.nodes[edge_list.list[i]];
+		edge_loop.edge_list.data[i] = get_call(Oriented_Edge, out, a242, edge_node.integer);
+		if (!edge_loop.edge_list.data[i])
+			return nullptr;
+	}
+
+	A242::Edge_Loop* ptr = a242.arena.take<A242::Edge_Loop>(xstd::move(edge_loop));
+	a242.edge_loops.push(ptr);
+	return ptr;
 }
 
 compile_signature(Edge_Curve) {
@@ -442,15 +588,28 @@ void compile_express_from_memory(const parse_express_from_memory_result& out, A2
 		if (is_type<A242::Plane>(out, a242, i)) {
 			get_call(Plane, out, a242, i);
 		}
-		if (is_type<A242::Vertex_Point>(out, a242, i)) {
-			get_call(Vertex_Point, out, a242, i);
-		}
-		if (is_type<A242::Edge_Curve>(out, a242, i)) {
-			get_call(Edge_Curve, out, a242, i);
+		if (is_type<A242::Edge_Loop>(out, a242, i)) {
+			get_call(Edge_Loop, out, a242, i);
 		}
 		if (is_type<A242::Cylindrical_Surface>(out, a242, i)) {
 			get_call(Cylindrical_Surface, out, a242, i);
 		}
+	}
+
+	for (size_t i = 0; i < a242.edge_loops.size; i += 1) {
+		A242::Edge_Loop* edge_loop = a242.edge_loops[i];
+		print("Edge Loop: ");
+		print(edge_loop->name);
+
+		print("(");
+		for (size_t j = 0; j < edge_loop->edge_list.size; j += 1) {
+			print(" ");
+			A242::Oriented_Edge* oriented_edge = edge_loop->edge_list.data[j];
+			print("Oriented Edge: ");
+			print(oriented_edge->name);
+			print(" ");
+		}
+		print(")\n");
 	}
 
 }

@@ -94,8 +94,33 @@ struct A242 {
 		ref<Curve> edge_geometry = nullptr;
 		bool same_sense = false;
 	};
+	struct_A242(Oriented_Edge, Edge_Pack) {
+		ref<Edge> edge_element = nullptr;
+		bool orientation = false;
+	};
+	
+	struct_A242(Loop, Topological_Representation_Item_Pack) {
+	};
+	struct_A242(Path, Topological_Representation_Item_Pack) {
+		View<Oriented_Edge*> edge_list;
+	};
+	struct_A242(Edge_Loop, Loop_Pack, Path_Pack) {
+	};
+
+	struct_A242(Vector, Geometric_Representation_Item_Pack) {
+		ref<Direction> orientation = nullptr;
+		float magnitude;
+	};
+	struct_A242(Line, Curve_Pack) {
+		ref<Cartesian_Point> point = nullptr;
+		ref<Vector> line_direction = nullptr;
+	};
 #undef struct_A242
 
+	DynArray<Vector*> vectors;
+	DynArray<Line*> lines;
+	DynArray<Edge_Loop*> edge_loops;
+	DynArray<Oriented_Edge*> oriented_edges;
 	DynArray<Cylindrical_Surface*> cylindrical_surfaces;
 	DynArray<Edge_Curve*> edge_curves;
 	DynArray<Curve*> curves;
