@@ -115,8 +115,14 @@ struct A242 {
 		ref<Cartesian_Point> point = nullptr;
 		ref<Vector> line_direction = nullptr;
 	};
+	struct_A242(Face_Bound, Loop_Pack) {
+		ref<Loop> bound = nullptr;
+		bool orientation = false;
+	};
 #undef struct_A242
 
+	DynArray<Loop*> loops;
+	DynArray<Face_Bound*> face_bounds;
 	DynArray<Vector*> vectors;
 	DynArray<Line*> lines;
 	DynArray<Edge_Loop*> edge_loops;

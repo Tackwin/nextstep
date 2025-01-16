@@ -373,6 +373,50 @@ compile_signature(Oriented_Edge) {
 	return ptr;
 }
 
+compile_signature(Edge_Loop);
+compile_signature(Loop) {
+	if (type != "LOOP") {
+		if (auto ptr = compile_Edge_Loop(out, a242, type, parameters); ptr)
+			return (A242::Loop*)ptr;
+		// vertex_loop,
+		// poly_loop,
+
+		return nullptr;
+	}
+
+	return nullptr;
+}
+
+compile_signature(Face_Bound) {
+	if (type != "FACE_BOUND") {
+		return nullptr;
+	}
+
+	A242::Face_Bound face_bound;
+	const Node& param_list = out.nodes[parameters];
+	if (param_list.list.size != 3)
+		return nullptr;
+	
+	const Node& name = out.nodes[param_list.list[0]];
+	face_bound.name = name.string;
+	if (name.kind != Node::Kind::STRING)
+		return nullptr;
+	
+	const Node& bound_node = out.nodes[param_list.list[1]];
+	face_bound.bound = get_call(Loop, out, a242, bound_node.integer);
+	if (!face_bound.bound)
+		return nullptr;
+
+	const Node& orientation_node = out.nodes[param_list.list[2]];
+	face_bound.orientation = orientation_node.enumeration == "T";
+	if (orientation_node.kind != Node::Kind::ENUMERATION)
+		return nullptr;
+	
+	A242::Face_Bound* ptr = a242.arena.take<A242::Face_Bound>(xstd::move(face_bound));
+	a242.face_bounds.push(ptr);
+	return ptr;
+}
+
 compile_signature(Line) {
 	if (type != "LINE") {
 		return nullptr;
@@ -588,8 +632,8 @@ void compile_express_from_memory(const parse_express_from_memory_result& out, A2
 		if (is_type<A242::Plane>(out, a242, i)) {
 			get_call(Plane, out, a242, i);
 		}
-		if (is_type<A242::Edge_Loop>(out, a242, i)) {
-			get_call(Edge_Loop, out, a242, i);
+		if (is_type<A242::Face_Bound>(out, a242, i)) {
+			get_call(Face_Bound, out, a242, i);
 		}
 		if (is_type<A242::Cylindrical_Surface>(out, a242, i)) {
 			get_call(Cylindrical_Surface, out, a242, i);
