@@ -119,8 +119,35 @@ struct A242 {
 		ref<Loop> bound = nullptr;
 		bool orientation = false;
 	};
+	struct_A242(Face_Outer_Bound, Face_Bound_Pack) {
+	};
+	struct_A242(Face, Topological_Representation_Item_Pack) {
+		View<Face_Bound*> bounds;
+	};
+	struct_A242(Face_Surface, Face_Pack, Geometric_Representation_Item_Pack) {
+		ref<Surface> face_geometry = nullptr;
+		bool same_sense = false;
+	};
+	struct_A242(Advanced_Face, Face_Surface_Pack) {
+	};
+
+	struct_A242(Connected_Face_Set, Topological_Representation_Item_Pack) {
+		View<Face*> cfs_faces;
+	};
+	struct_A242(Closed_Shell, Connected_Face_Set_Pack) {
+	};
+
+	struct_A242(Solid_Model, Geometric_Representation_Item_Pack) {
+	};
+	struct_A242(Manifold_Solid_Brep, Solid_Model_Pack) {
+		ref<Closed_Shell> outer;
+	};
 #undef struct_A242
 
+	DynArray<Manifold_Solid_Brep*> manifold_solid_breps;
+	DynArray<Closed_Shell*> closed_shells;
+	DynArray<Advanced_Face*> advanced_faces;
+	DynArray<Face_Surface*> face_surfaces;
 	DynArray<Loop*> loops;
 	DynArray<Face_Bound*> face_bounds;
 	DynArray<Vector*> vectors;

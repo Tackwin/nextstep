@@ -387,8 +387,41 @@ compile_signature(Loop) {
 	return nullptr;
 }
 
+compile_signature(Face_Outer_Bound) {
+	if (type != "FACE_OUTER_BOUND") {
+		return nullptr;
+	}
+
+	A242::Face_Outer_Bound face_outer_bound;
+	const Node& param_list = out.nodes[parameters];
+	if (param_list.list.size != 3)
+		return nullptr;
+
+	const Node& name = out.nodes[param_list.list[0]];
+	face_outer_bound.name = name.string;
+	if (name.kind != Node::Kind::STRING)
+		return nullptr;
+
+	const Node& bound_node = out.nodes[param_list.list[1]];
+	face_outer_bound.bound = get_call(Loop, out, a242, bound_node.integer);
+	if (!face_outer_bound.bound)
+		return nullptr;
+
+	const Node& orientation_node = out.nodes[param_list.list[2]];
+	face_outer_bound.orientation = orientation_node.enumeration == "T";
+	if (orientation_node.kind != Node::Kind::ENUMERATION)
+		return nullptr;
+	
+	A242::Face_Outer_Bound* ptr =
+		a242.arena.take<A242::Face_Outer_Bound>(xstd::move(face_outer_bound));
+	// a242.face_outer_bounds.push(ptr);
+	return ptr;
+}
+
 compile_signature(Face_Bound) {
 	if (type != "FACE_BOUND") {
+		if (auto ptr = compile_Face_Outer_Bound(out, a242, type, parameters); ptr)
+			return (A242::Face_Bound*)ptr;
 		return nullptr;
 	}
 
@@ -414,6 +447,225 @@ compile_signature(Face_Bound) {
 	
 	A242::Face_Bound* ptr = a242.arena.take<A242::Face_Bound>(xstd::move(face_bound));
 	a242.face_bounds.push(ptr);
+	return ptr;
+}
+compile_signature(Closed_Shell);
+compile_signature(Connected_Face_Set) {
+	if (type != "CONNECTED_FACE_SET") {
+		if (auto ptr = compile_Closed_Shell(out, a242, type, parameters); ptr)
+			return (A242::Connected_Face_Set*)ptr;
+		// >TODO_ITEM open_shell
+		return nullptr;
+	}
+
+	return nullptr;
+}
+
+compile_signature(Face);
+compile_signature(Closed_Shell) {
+	if (type != "CLOSED_SHELL") {
+		// >TODO_ITEM oriented_closed_shell
+		return nullptr;
+	}
+
+	A242::Closed_Shell closed_shell;
+	const Node& param_list = out.nodes[parameters];
+	if (param_list.list.size != 2)
+		return nullptr;
+
+	const Node& name = out.nodes[param_list.list[0]];
+	closed_shell.name = name.string;
+	if (name.kind != Node::Kind::STRING)
+		return nullptr;
+	
+	const Node& face_list = out.nodes[param_list.list[1]];
+	if (face_list.kind != Node::Kind::LIST)
+		return nullptr;
+	closed_shell.cfs_faces.size = face_list.list.size;
+	closed_shell.cfs_faces.data = a242.arena.alloc<A242::Face*>(closed_shell.cfs_faces.size);
+	for (size_t i = 0; i < closed_shell.cfs_faces.size; i += 1) {
+		const Node& face_node = out.nodes[face_list.list[i]];
+		if (face_node.kind != Node::Kind::ENTITY_INSTANCE_NAME)
+			return nullptr;
+		closed_shell.cfs_faces.data[i] = get_call(Face, out, a242, face_node.integer);
+		if (!closed_shell.cfs_faces.data[i])
+			return nullptr;
+	}
+
+	A242::Closed_Shell* ptr = a242.arena.take<A242::Closed_Shell>(xstd::move(closed_shell));
+	a242.closed_shells.push(ptr);
+	return ptr;
+}
+
+compile_signature(Manifold_Solid_Brep) {
+	if (type != "MANIFOLD_SOLID_BREP") {
+		// >TODO_ITEM brep_with_void
+		// >TODO_ITEM faceted_brep
+		return nullptr;
+	}
+
+	A242::Manifold_Solid_Brep brep;
+	const Node& param_list = out.nodes[parameters];
+	if (param_list.list.size != 2)
+		return nullptr;
+
+	const Node& name = out.nodes[param_list.list[0]];
+	brep.name = name.string;
+	if (name.kind != Node::Kind::STRING)
+		return nullptr;
+
+	const Node& outer_node = out.nodes[param_list.list[1]];
+	brep.outer = get_call(Closed_Shell, out, a242, outer_node.integer);
+	if (outer_node.kind != Node::Kind::ENTITY_INSTANCE_NAME)
+		return nullptr;
+
+	A242::Manifold_Solid_Brep* ptr = a242.arena.take<A242::Manifold_Solid_Brep>(xstd::move(brep));
+	a242.manifold_solid_breps.push(ptr);
+	return ptr;
+}
+
+compile_signature(Cylindrical_Surface);
+compile_signature(Plane);
+
+compile_signature(Elementary_Surface) {
+	if (type != "ELEMENTARY_SURFACE") {
+		// >TODO_ITEM conical surface
+		if (auto ptr = compile_Cylindrical_Surface(out, a242, type, parameters); ptr)
+			return (A242::Elementary_Surface*)ptr;
+		// >TODO_ITEM dupin cyclide surface
+		if (auto ptr = compile_Plane(out, a242, type, parameters); ptr)
+			return (A242::Elementary_Surface*)ptr;
+		// >TODO_ITEM spherical surface
+		// >TODO_ITEM toroidal surface
+		return nullptr;
+	}
+	return nullptr;
+}
+
+compile_signature(Surface) {
+	if (type != "SURFACE") {
+		// >TODO_ITEM bounded_surface
+		if (auto ptr = compile_Elementary_Surface(out, a242, type, parameters); ptr)
+			return (A242::Surface*)ptr;
+		// >TODO_ITEM offset_surface
+		// >TODO_ITEM oriented_surface
+		// >TODO_ITEM surface_replica
+		// >TODO_ITEM swept_surface
+		return nullptr;
+	}
+	return nullptr;
+}
+
+compile_signature(Advanced_Face) {
+	if (type != "ADVANCED_FACE") {
+		return nullptr;
+	}
+
+	A242::Advanced_Face advanced_face;
+	const Node& param_list = out.nodes[parameters];
+	if (param_list.list.size != 4)
+		return nullptr;
+	
+	const Node& name = out.nodes[param_list.list[0]];
+	advanced_face.name = name.string;
+	if (name.kind != Node::Kind::STRING)
+		return nullptr;
+
+	const Node& bounds_list = out.nodes[param_list.list[1]];
+	if (bounds_list.kind != Node::Kind::LIST)
+		return nullptr;
+	advanced_face.bounds.size = bounds_list.list.size;
+	advanced_face.bounds.data = a242.arena.alloc<A242::Face_Bound*>(advanced_face.bounds.size);
+	for (size_t i = 0; i < advanced_face.bounds.size; i += 1) {
+		const Node& bound_node = out.nodes[bounds_list.list[i]];
+		if (bound_node.kind != Node::Kind::ENTITY_INSTANCE_NAME)
+			return nullptr;
+		advanced_face.bounds.data[i] = get_call(Face_Bound, out, a242, bound_node.integer);
+		if (!advanced_face.bounds.data[i])
+			return nullptr;
+	}
+
+	const Node& face_geometry_node = out.nodes[param_list.list[2]];
+	advanced_face.face_geometry = get_call(Surface, out, a242, face_geometry_node.integer);
+	if (!advanced_face.face_geometry)
+		return nullptr;
+
+	const Node& same_sense_node = out.nodes[param_list.list[3]];
+	advanced_face.same_sense = same_sense_node.enumeration == "T";
+	if (same_sense_node.kind != Node::Kind::ENUMERATION)
+		return nullptr;
+	
+	A242::Advanced_Face* ptr = a242.arena.take<A242::Advanced_Face>(xstd::move(advanced_face));
+	a242.advanced_faces.push(ptr);
+	return ptr;
+}
+
+compile_signature(Face_Surface) {
+	if (type != "FACE_SURFACE") {
+		if (auto ptr = compile_Advanced_Face(out, a242, type, parameters); ptr)
+			return (A242::Face_Surface*)ptr;
+		return nullptr;
+	}
+	A242::Face_Surface face_surface;
+	const Node& param_list = out.nodes[parameters];
+	if (param_list.list.size != 3)
+		return nullptr;
+	
+	const Node& name = out.nodes[param_list.list[0]];
+	face_surface.name = name.string;
+	if (name.kind != Node::Kind::STRING)
+		return nullptr;
+	
+	const Node& face_node = out.nodes[param_list.list[1]];
+	if (face_node.kind != Node::Kind::LIST)
+		return nullptr;
+	face_surface.bounds.size = face_node.list.size;
+	face_surface.bounds.data = a242.arena.alloc<A242::Face_Bound*>(face_surface.bounds.size);
+	for (size_t i = 0; i < face_surface.bounds.size; i += 1) {
+		const Node& bound_node = out.nodes[face_node.list[i]];
+		if (bound_node.kind != Node::Kind::ENTITY_INSTANCE_NAME)
+			return nullptr;
+		face_surface.bounds.data[i] = get_call(Face_Bound, out, a242, bound_node.integer);
+		if (!face_surface.bounds.data[i])
+			return nullptr;
+	}
+
+	const Node& face_geometry_node = out.nodes[param_list.list[2]];
+	face_surface.face_geometry = get_call(Surface, out, a242, face_geometry_node.integer);
+	if (!face_surface.face_geometry)
+		return nullptr;
+
+	const Node& same_sense_node = out.nodes[param_list.list[3]];
+	face_surface.same_sense = same_sense_node.enumeration == "T";
+	if (same_sense_node.kind != Node::Kind::ENUMERATION)
+		return nullptr;
+
+	A242::Face_Surface* ptr = a242.arena.take<A242::Face_Surface>(xstd::move(face_surface));
+	a242.face_surfaces.push(ptr);
+	return ptr;
+}
+
+compile_signature(Face) {
+	if (type != "FACE") {
+		if (auto ptr = compile_Face_Surface(out, a242, type, parameters); ptr)
+			return (A242::Face*)ptr;
+		// >TODO_ITEM subface
+		// >TODO_ITEM oriented_face
+		return nullptr;
+	}
+
+	A242::Face face;
+	const Node& param_list = out.nodes[parameters];
+	if (param_list.list.size != 1)
+		return nullptr;
+
+	const Node& name = out.nodes[param_list.list[0]];
+	face.name = name.string;
+	if (name.kind != Node::Kind::STRING)
+		return nullptr;
+
+	A242::Face* ptr = a242.arena.take<A242::Face>(xstd::move(face));
+	// a242.faces.push(ptr);
 	return ptr;
 }
 
@@ -483,10 +735,9 @@ compile_signature(Edge_Loop) {
 }
 
 compile_signature(Edge_Curve) {
-	// Not a supertype
-	// if (type != "EDGE_CURVE") {
-	// 	return nullptr;
-	// }
+	if (type != "EDGE_CURVE") {
+		return nullptr;
+	}
 
 	A242::Edge_Curve edge_curve;
 	const Node& param_list = out.nodes[parameters];
@@ -629,31 +880,25 @@ void compile_express_from_memory(const parse_express_from_memory_result& out, A2
 	}
 
 	for (size_t i = 1; i < max_instance_name; i += 1) {
-		if (is_type<A242::Plane>(out, a242, i)) {
-			get_call(Plane, out, a242, i);
-		}
-		if (is_type<A242::Face_Bound>(out, a242, i)) {
-			get_call(Face_Bound, out, a242, i);
-		}
-		if (is_type<A242::Cylindrical_Surface>(out, a242, i)) {
-			get_call(Cylindrical_Surface, out, a242, i);
+		if (is_type<A242::Manifold_Solid_Brep>(out, a242, i)) {
+			get_call(Manifold_Solid_Brep, out, a242, i);
 		}
 	}
 
-	for (size_t i = 0; i < a242.edge_loops.size; i += 1) {
-		A242::Edge_Loop* edge_loop = a242.edge_loops[i];
-		print("Edge Loop: ");
-		print(edge_loop->name);
+	// for (size_t i = 0; i < a242.edge_loops.size; i += 1) {
+	// 	A242::Edge_Loop* edge_loop = a242.edge_loops[i];
+	// 	print("Edge Loop: ");
+	// 	print(edge_loop->name);
 
-		print("(");
-		for (size_t j = 0; j < edge_loop->edge_list.size; j += 1) {
-			print(" ");
-			A242::Oriented_Edge* oriented_edge = edge_loop->edge_list.data[j];
-			print("Oriented Edge: ");
-			print(oriented_edge->name);
-			print(" ");
-		}
-		print(")\n");
-	}
+	// 	print("(");
+	// 	for (size_t j = 0; j < edge_loop->edge_list.size; j += 1) {
+	// 		print(" ");
+	// 		A242::Oriented_Edge* oriented_edge = edge_loop->edge_list.data[j];
+	// 		print("Oriented Edge: ");
+	// 		print(oriented_edge->name);
+	// 		print(" ");
+	// 	}
+	// 	print(")\n");
+	// }
 
 }

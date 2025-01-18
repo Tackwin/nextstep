@@ -10,8 +10,10 @@ Build build(Flags flags) noexcept {
 	b.flags.entry_point = "start";
 	b.flags.subsystem = Flags::Subsystem::Console;
 	b.flags.disable_exceptions = true;
+	b.flags.compile_native = true;
 
 	b.name = "nextstep";
+	// b.cli = Build::Cli::Gcc;
 
 	b.add_header("src/");
 	b.add_source_recursively("src/");
