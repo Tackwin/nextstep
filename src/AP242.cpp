@@ -1,6 +1,7 @@
 #include "AP242.hpp"
 #include "Platform.hpp"
 
+
 template<typename T>
 T* get(
 	const parse_express_from_memory_result& out,
@@ -33,7 +34,7 @@ T* get(
 #define get_call(x, out, a242, id) get<A242::x>(out, a242, id, compile_##x)
 
 template<typename T>
-bool is_type(const parse_express_from_memory_result& out, A242& a242, size_t instance_name) {
+bool is_type(const parse_express_from_memory_result& out, const A242& a242, size_t instance_name) {
 	if (instance_name >= a242.instance_name_to_node.size)
 		return false;
 
@@ -55,6 +56,9 @@ bool is_type(const parse_express_from_memory_result& out, A242& a242, size_t ins
 	}
 	return false;
 }
+
+#define is_type_decl(x)\
+template<> bool is_type<A242::x>(const parse_express_from_memory_result&, const A242&, size_t)
 
 #define compile_signature(x) A242::x* compile_##x(\
 	const parse_express_from_memory_result& out, A242& a242, Read_String type, size_t parameters\
@@ -104,6 +108,9 @@ compile_signature(Cartesian_Point) {
 	a242.cartesian_points.push(ptr);
 	return ptr;
 }
+
+is_type_decl(Cartesian_Point);
+
 compile_signature(Point) {
 	if (type != "POINT") {
 		if (auto ptr = compile_Cartesian_Point(out, a242, type, parameters); ptr)

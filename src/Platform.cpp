@@ -296,6 +296,44 @@ read_entire_file_into_result read_entire_file_into(Read_String path, Write_Strin
 	return read_entire_file_into_result::success;
 }
 
+write_entire_file_result write_entire_file(Read_String path, Read_String file) {
+	auto_release_scratch();
+
+	size_t path16n = widen(path, { (u16*)g_scratch_buffer, g_scratch_buffer_size });
+	Read_String16 path16 = { (u16*)g_scratch_buffer, path16n };
+	g_scratch_buffer += path16n * 2;
+
+	wchar_t* buffer = talloc<wchar_t>(path16.size + 1);
+	for (size_t i = 0; i < path16.size; ++i)
+		buffer[i] = path16.data[i];
+	buffer[path16.size] = 0;
+
+	HANDLE h = CreateFileW(
+		buffer, GENERIC_WRITE, FILE_SHARE_READ, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr
+	);
+	if (h == INVALID_HANDLE_VALUE) {
+		size_t err = GetLastError();
+		if (err == ERROR_FILE_NOT_FOUND)
+			return write_entire_file_result::file_not_found;
+		if (err == ERROR_PATH_NOT_FOUND)
+			return write_entire_file_result::file_not_found;
+		if (err == ERROR_ACCESS_DENIED)
+			return write_entire_file_result::access_denied;
+		return write_entire_file_result::other_error;
+	}
+	defer {
+		CloseHandle(h);
+	};
+
+	DWORD written;
+	WriteFile(h, file.data, (DWORD)file.size, &written, nullptr);
+
+	if (written != file.size)
+		return write_entire_file_result::other_error;
+	
+	return write_entire_file_result::success;
+}
+
 Read_String get_file_from_command_line(Read_String line) {
 	size_t quote_counter = 0;
 	size_t counter = 0;

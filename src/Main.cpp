@@ -3,6 +3,7 @@
 
 #include "Platform.hpp"
 #include "AP242.hpp"
+#include "Mesher.hpp"
 
 extern "C" void start() {
 
@@ -47,6 +48,12 @@ extern "C" void start() {
 			print((size_t)((t2 - t1) * 1000));
 			print("ms\n");
 
+			print("Meshing file\n");
+			Mesh mesh;
+			mesh_from_ap242(res, a242, mesh);
+			DynArray<u8> obj;
+			write_obj(mesh, obj);
+			write_entire_file("mesh.obj", { obj.data, obj.size });
 		}
 	}
 	else if (is_directory(file)) {

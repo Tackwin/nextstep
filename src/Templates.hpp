@@ -219,6 +219,7 @@ namespace xstd {
 		using type = typename Flatten_Helper<Template_Pack<>, Template_Pack<Pack ...>>::type;
 	};
 
+
 	struct A { int a; };
 	struct B { int b; };
 	struct C { int c; };
@@ -254,4 +255,24 @@ namespace xstd {
 	template<typename ... Pack>
 	struct inherit<Template_Pack<Pack ...>> : Pack ... {
 	};
+
+	template<typename T, typename F, typename U>
+	struct infix_operator {
+		F* op;
+	};
+	template<typename T, typename F, typename U>
+	struct infix_operator_build {
+		const T& lhs;
+		F* op;
+	};
+}
+template<typename T, typename F, typename U>
+extern xstd::infix_operator_build<T, F, U> operator<(const T& lhs, xstd::infix_operator<T, F, U> op)
+{
+	return { lhs, op.op };
+}
+template<typename T, typename F, typename U>
+extern U operator>(xstd::infix_operator_build<T, F, U> op, const T& rhs)
+{
+	return op.op(op.lhs, rhs);
 }

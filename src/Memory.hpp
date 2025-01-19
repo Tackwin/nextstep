@@ -483,3 +483,5 @@ struct Fixed_Array {
 		return data[i];
 	}
 };
+
+extern void append(DynArray<u8>& out, Read_String str);

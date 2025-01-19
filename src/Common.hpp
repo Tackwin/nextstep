@@ -2,6 +2,7 @@
 using u8 = unsigned char;
 using u16 = unsigned short;
 using u32 = unsigned int;
+using i32 = signed int;
 using i64 = signed long long;
 
 constexpr size_t SIZE_MAX = (size_t)-1;

@@ -173,4 +173,20 @@ struct A242 {
 	}
 };
 
+struct AZ {};
+
+template<typename T>
+T* lookup(const parse_express_from_memory_result& out, const A242& a242, size_t id) {
+	if (id >= a242.instance_name_to_items.size)
+		return nullptr;
+	u32 hash = *a242.instance_name_to_items[id];
+	if (hash != T::hash)
+		return nullptr;
+
+	return (T*)a242.instance_name_to_items[id];
+}
+template<typename T>
+extern bool is_type(
+	const parse_express_from_memory_result& out, const A242& a242, size_t instance_name
+);
 extern void compile_express_from_memory(const parse_express_from_memory_result& out, A242& a242);
