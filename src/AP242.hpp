@@ -22,7 +22,10 @@ struct A242 {
 			__VA_ARGS__\
 		>\
 		>::type>::type;\
-		using x##_Pack_Inherited = xstd::Template_Pack<Item<case_insenstive_hash(#x)>, x##_Pack>;\
+		struct x##_Name {\
+			static constexpr const char NAME[] = #x;\
+		};\
+		using x##_Pack_Inherited = xstd::Template_Pack<Item<case_insenstive_hash(#x)>, x##_Pack, x##_Name>;\
 		using x = xstd::inherit<xstd::Flatten_Pack<x##_Pack_Inherited>::type>;\
 		struct x##_Data
 
