@@ -170,6 +170,7 @@ struct A242 {
 	Stable_Arena arena;
 	Fixed_Array<size_t> instance_name_to_node;
 	Fixed_Array<u32*> instance_name_to_items;
+	DynArray<Read_String> diagnostic;
 
 	void clear() {
 		*this = {};

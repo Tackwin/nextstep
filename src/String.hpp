@@ -2,10 +2,6 @@
 
 #include "Common.hpp"
 
-template<typename T>
-T fromcstr(const char* str) {
-	return fromcstr<T>((const u8*)str);
-}
 
 template<typename T>
 T fromcstr(const u8* str) {
@@ -14,6 +10,11 @@ T fromcstr(const u8* str) {
 
 	return T{ str, n };
 }
+template<typename T>
+T fromcstr(const char* str) {
+	return fromcstr<T>((const u8*)str);
+}
+
 template<typename T>
 T fromcstr(const u16* str) {
 	size_t n = 0;
@@ -106,6 +107,8 @@ extern bool operator==(const Read_String& a, const char (&cstr)[N]) {
 
 extern size_t to_string(size_t n, Write_String& out);
 extern size_t to_string(i64 n, Write_String& out);
+extern size_t to_string(f64 n, Write_String& out);
+extern size_t to_string(f32 n, Write_String& out);
 extern size_t parse_size_t(Read_String str);
 extern bool case_insensitive_compare(Read_String a, Read_String b);
 extern size_t case_insenstive_hash(Read_String str);

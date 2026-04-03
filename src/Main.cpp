@@ -54,6 +54,12 @@ extern "C" void start() {
 			DynArray<u8> obj;
 			write_obj(mesh, obj);
 			write_entire_file("mesh.obj", { obj.data, obj.size });
+
+			for (size_t i = 0; i < a242.diagnostic.size; i += 1) {
+				print("Mesh diagnostic: ");
+				print(a242.diagnostic[i]);
+				print("\n");
+			}
 		}
 	}
 	else if (is_directory(file)) {

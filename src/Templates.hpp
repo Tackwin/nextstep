@@ -58,7 +58,7 @@ namespace xstd {
 			if (this == &other)
 				return *this;
 			has_value = other.has_value;
-			value = std::move(other.value);
+			value = xstd::move(other.value);
 			return *this;
 		}
 		optional& operator=(const T& value) {
