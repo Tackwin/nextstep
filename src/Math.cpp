@@ -43,7 +43,6 @@ float fmod(float x, float y) {
 
 float cos_taylor_literal_6terms_pi(float x)
 {
-	x = fmod(x, (float)(2 * PI));
 	char sign = 1;
 	if (x > PI)
 	{
@@ -61,7 +60,8 @@ float cos_taylor_literal_6terms_pi(float x)
 	);
 }
 float cos(float x) {
-	return cos_taylor_literal_6terms_pi(x);
+	extern float cr_cosf(float x);
+	return cr_cosf(x);
 }
 float sin(float x) {
 	return cos(PI / 2 - x);

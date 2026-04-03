@@ -2,12 +2,21 @@
 #include "Platform.hpp"
 
 
+void report_error(A242& res, Read_String msg) {
+	res.diagnostic.push(msg);
+}
+
+struct compile_feedback_t {
+	bool error_type = false;
+};
 template<typename T>
 T* get(
 	const parse_express_from_memory_result& out,
 	A242& a242,
 	size_t id,
-	T* (compile_f)(const parse_express_from_memory_result&, A242&, Read_String, size_t)
+	T* (compile_f)(
+		const parse_express_from_memory_result&, A242&, Read_String, size_t, compile_feedback_t*
+	)
 ) {
 	if (id >= a242.instance_name_to_items.size)
 		return nullptr;
@@ -25,7 +34,8 @@ T* get(
 		if (entity_instance.entity_instance.simple_record) {
 			const Node& record = out.nodes[*entity_instance.entity_instance.simple_record];
 			const Token& token = out.tokens[record.simple_record.keyword_token];
-			*items = (u32*)compile_f(out, a242, token.text, record.simple_record.parameters);
+			*items =
+				(u32*)compile_f(out, a242, token.text, record.simple_record.parameters, nullptr);
 		}
 	}
 
@@ -57,22 +67,50 @@ bool is_type(const parse_express_from_memory_result& out, const A242& a242, size
 	return false;
 }
 
+
 #define is_type_decl(x)\
 template<> bool is_type<A242::x>(const parse_express_from_memory_result&, const A242&, size_t)
 
+
 #define compile_signature(x) A242::x* compile_##x(\
-	const parse_express_from_memory_result& out, A242& a242, Read_String type, size_t parameters\
+	const parse_express_from_memory_result& out,\
+	A242& a242,\
+	Read_String type,\
+	size_t parameters,\
+	compile_feedback_t* feedback\
 )
+
+#define report_error_subtype(x)\
+	if (feedback) feedback->error_type = true;\
+	report_error(a242, #x " subtype not handled");\
+	report_error(a242, type);
+
+#define subtype_check_begin(type_name)\
+	if (type != #type_name) {\
+		size_t before_diagnostic_size = a242.diagnostic.size;
+
+#define subtype_check_case(type_, subtype)\
+	{\
+		compile_feedback_t subfeedback;\
+		auto ptr = compile_##subtype(out, a242, type, parameters, &subfeedback);\
+		if (!subfeedback.error_type) {\
+			if (ptr) a242.diagnostic.size = before_diagnostic_size;\
+			return (A242::type_*)ptr;\
+		}\
+	}
+
+#define subtype_check_end(type)\
+		report_error_subtype(type);\
+		return nullptr;\
+	}
 
 
 compile_signature(Cartesian_Point) {
-	if (type != "CARTESIAN_POINT") {
+	subtype_check_begin(CARTESIAN_POINT);
 		// cylindrical_point
 		// polar_point
 		// spherical_point
-
-		return nullptr;
-	}
+	subtype_check_end(Cartesian_Point);
 
 	A242::Cartesian_Point point;
 
@@ -112,11 +150,9 @@ compile_signature(Cartesian_Point) {
 is_type_decl(Cartesian_Point);
 
 compile_signature(Point) {
-	if (type != "POINT") {
-		if (auto ptr = compile_Cartesian_Point(out, a242, type, parameters); ptr)
-			return (A242::Point*)ptr;
-		return nullptr;
-	}
+	subtype_check_begin(POINT);
+		subtype_check_case(Point, Cartesian_Point);
+	subtype_check_end(Point);
 
 	A242::Point point;
 
@@ -134,6 +170,8 @@ compile_signature(Point) {
 	return ptr;
 }
 compile_signature(Direction) {
+	subtype_check_begin(DIRECTION);
+	subtype_check_end(Direction);
 	A242::Direction direction;
 	const Node& param_list = out.nodes[parameters];
 	if (param_list.list.size != 2)
@@ -166,6 +204,8 @@ compile_signature(Direction) {
 	return ptr;
 }
 compile_signature(Vertex_Point) {
+	subtype_check_begin(VERTEX_POINT);
+	subtype_check_end(Vertex_Point);
 	A242::Vertex_Point vertex_point;
 	const Node& param_list = out.nodes[parameters];
 	if (param_list.list.size != 2)
@@ -187,6 +227,8 @@ compile_signature(Vertex_Point) {
 }
 
 compile_signature(Axis2_Placement_3d) {
+	subtype_check_begin(AXIS2_PLACEMENT_3D);
+	subtype_check_end(Axis2_Placement_3d);
 	A242::Axis2_Placement_3d placement;
 
 	const Node& param_list = out.nodes[parameters];
@@ -239,6 +281,8 @@ compile_signature(Axis2_Placement_3d) {
 	return ptr;
 }
 compile_signature(Circle) {
+	subtype_check_begin(CIRCLE);
+	subtype_check_end(Circle);
 	A242::Circle circle;
 	const Node& param_list = out.nodes[parameters];
 	if (param_list.list.size != 3)
@@ -265,24 +309,20 @@ compile_signature(Circle) {
 }
 
 compile_signature(Conic) {
-	if (type != "CONIC") {
-		if (auto ptr = compile_Circle(out, a242, type, parameters); ptr)
-			return (A242::Conic*)ptr;
+	subtype_check_begin(CONIC);
 		// ellipse,
 		// hyperbola,
 		// parabola
-
-		return nullptr;
-	}
+		subtype_check_case(Conic, Circle);
+	subtype_check_end(Conic);
 
 	print("A conic by itself should never be instantiated\n");
 	return nullptr;
 }
 
 compile_signature(Vector) {
-	if (type != "VECTOR") {
-		return nullptr;
-	}
+	subtype_check_begin(VECTOR);
+	subtype_check_end(Vector);
 
 	A242::Vector vector;
 	const Node& param_list = out.nodes[parameters];
@@ -312,11 +352,7 @@ compile_signature(Vector) {
 compile_signature(Line);
 
 compile_signature(Curve) {
-	if (type != "CURVE") {
-		if (auto ptr = compile_Line(out, a242, type, parameters); ptr)
-			return (A242::Curve*)ptr;
-		if (auto ptr = compile_Conic(out, a242, type, parameters); ptr)
-			return (A242::Curve*)ptr;
+	subtype_check_begin(CURVE);
 		// conic,
 		// clothoid,
 		// circular_involute,
@@ -325,9 +361,10 @@ compile_signature(Curve) {
 		// offset_curve_2d,
 		// offset_curve_3d,
 		// curve_replica
-		return nullptr;
-	}
-	
+		subtype_check_case(Curve, Line);
+		subtype_check_case(Curve, Conic);
+	subtype_check_end(Curve);
+
 	print("A curve by itself should never be instantiated\n");
 	return nullptr;
 }
@@ -336,20 +373,17 @@ compile_signature(Oriented_Edge);
 compile_signature(Edge_Curve);
 
 compile_signature(Edge) {
-	if (type != "EDGE") {
-		if (auto ptr = compile_Oriented_Edge(out, a242, type, parameters); ptr)
-			return (A242::Edge*)ptr;
-		if (auto ptr = compile_Edge_Curve(out, a242, type, parameters); ptr)
-			return (A242::Edge*)ptr;
+	subtype_check_begin(EDGE);
 		// subedge
-	}
+		subtype_check_case(Edge, Oriented_Edge);
+		subtype_check_case(Edge, Edge_Curve);
+	subtype_check_end(Edge);
 	return nullptr;
 }
 
 compile_signature(Oriented_Edge) {
-	if (type != "ORIENTED_EDGE") {
-		return nullptr;
-	}
+	subtype_check_begin(ORIENTED_EDGE);
+	subtype_check_end(Oriented_Edge);
 	A242::Oriented_Edge oriented_edge;
 
 	const Node& param_list = out.nodes[parameters];
@@ -382,22 +416,16 @@ compile_signature(Oriented_Edge) {
 
 compile_signature(Edge_Loop);
 compile_signature(Loop) {
-	if (type != "LOOP") {
-		if (auto ptr = compile_Edge_Loop(out, a242, type, parameters); ptr)
-			return (A242::Loop*)ptr;
-		// vertex_loop,
-		// poly_loop,
-
-		return nullptr;
-	}
+	subtype_check_begin(LOOP);
+		subtype_check_case(Loop, Edge_Loop);
+	subtype_check_end(Loop);
 
 	return nullptr;
 }
 
 compile_signature(Face_Outer_Bound) {
-	if (type != "FACE_OUTER_BOUND") {
-		return nullptr;
-	}
+	subtype_check_begin(FACE_OUTER_BOUND);
+	subtype_check_end(Face_Outer_Bound);
 
 	A242::Face_Outer_Bound face_outer_bound;
 	const Node& param_list = out.nodes[parameters];
@@ -426,11 +454,9 @@ compile_signature(Face_Outer_Bound) {
 }
 
 compile_signature(Face_Bound) {
-	if (type != "FACE_BOUND") {
-		if (auto ptr = compile_Face_Outer_Bound(out, a242, type, parameters); ptr)
-			return (A242::Face_Bound*)ptr;
-		return nullptr;
-	}
+	subtype_check_begin(FACE_BOUND);
+		subtype_check_case(Face_Bound, Face_Outer_Bound);
+	subtype_check_end(Face_Bound);
 
 	A242::Face_Bound face_bound;
 	const Node& param_list = out.nodes[parameters];
@@ -458,22 +484,17 @@ compile_signature(Face_Bound) {
 }
 compile_signature(Closed_Shell);
 compile_signature(Connected_Face_Set) {
-	if (type != "CONNECTED_FACE_SET") {
-		if (auto ptr = compile_Closed_Shell(out, a242, type, parameters); ptr)
-			return (A242::Connected_Face_Set*)ptr;
-		// >TODO_ITEM open_shell
-		return nullptr;
-	}
+	subtype_check_begin(CONNECTED_FACE_SET);
+		subtype_check_case(Connected_Face_Set, Closed_Shell);
+	subtype_check_end(Connected_Face_Set);
 
 	return nullptr;
 }
 
 compile_signature(Face);
 compile_signature(Closed_Shell) {
-	if (type != "CLOSED_SHELL") {
-		// >TODO_ITEM oriented_closed_shell
-		return nullptr;
-	}
+	subtype_check_begin(CLOSED_SHELL);
+	subtype_check_end(Closed_Shell);
 
 	A242::Closed_Shell closed_shell;
 	const Node& param_list = out.nodes[parameters];
@@ -505,11 +526,8 @@ compile_signature(Closed_Shell) {
 }
 
 compile_signature(Manifold_Solid_Brep) {
-	if (type != "MANIFOLD_SOLID_BREP") {
-		// >TODO_ITEM brep_with_void
-		// >TODO_ITEM faceted_brep
-		return nullptr;
-	}
+	subtype_check_begin(MANIFOLD_SOLID_BREP);
+	subtype_check_end(Manifold_Solid_Brep);
 
 	A242::Manifold_Solid_Brep brep;
 	const Node& param_list = out.nodes[parameters];
@@ -535,38 +553,34 @@ compile_signature(Cylindrical_Surface);
 compile_signature(Plane);
 
 compile_signature(Elementary_Surface) {
-	if (type != "ELEMENTARY_SURFACE") {
+	subtype_check_begin(ELEMENTARY_SURFACE);
 		// >TODO_ITEM conical surface
-		if (auto ptr = compile_Cylindrical_Surface(out, a242, type, parameters); ptr)
-			return (A242::Elementary_Surface*)ptr;
 		// >TODO_ITEM dupin cyclide surface
-		if (auto ptr = compile_Plane(out, a242, type, parameters); ptr)
-			return (A242::Elementary_Surface*)ptr;
 		// >TODO_ITEM spherical surface
 		// >TODO_ITEM toroidal surface
-		return nullptr;
-	}
+		// if (type == "CYLINDRICAL_SURFACE")
+		// 	print("azeaze");
+		subtype_check_case(Elementary_Surface, Cylindrical_Surface);
+		subtype_check_case(Elementary_Surface, Plane);
+	subtype_check_end(Elementary_Surface);
 	return nullptr;
 }
 
 compile_signature(Surface) {
-	if (type != "SURFACE") {
+	subtype_check_begin(SURFACE);
 		// >TODO_ITEM bounded_surface
-		if (auto ptr = compile_Elementary_Surface(out, a242, type, parameters); ptr)
-			return (A242::Surface*)ptr;
+		subtype_check_case(Surface, Elementary_Surface);
 		// >TODO_ITEM offset_surface
 		// >TODO_ITEM oriented_surface
 		// >TODO_ITEM surface_replica
 		// >TODO_ITEM swept_surface
-		return nullptr;
-	}
+	subtype_check_end(Surface);
 	return nullptr;
 }
 
 compile_signature(Advanced_Face) {
-	if (type != "ADVANCED_FACE") {
-		return nullptr;
-	}
+	subtype_check_begin(ADVANCED_FACE);
+	subtype_check_end(Advanced_Face);
 
 	A242::Advanced_Face advanced_face;
 	const Node& param_list = out.nodes[parameters];
@@ -608,11 +622,10 @@ compile_signature(Advanced_Face) {
 }
 
 compile_signature(Face_Surface) {
-	if (type != "FACE_SURFACE") {
-		if (auto ptr = compile_Advanced_Face(out, a242, type, parameters); ptr)
-			return (A242::Face_Surface*)ptr;
-		return nullptr;
-	}
+	subtype_check_begin(FACE_SURFACE);
+		subtype_check_case(Face_Surface, Advanced_Face);
+	subtype_check_end(Face_Surface);
+
 	A242::Face_Surface face_surface;
 	const Node& param_list = out.nodes[parameters];
 	if (param_list.list.size != 3)
@@ -653,13 +666,9 @@ compile_signature(Face_Surface) {
 }
 
 compile_signature(Face) {
-	if (type != "FACE") {
-		if (auto ptr = compile_Face_Surface(out, a242, type, parameters); ptr)
-			return (A242::Face*)ptr;
-		// >TODO_ITEM subface
-		// >TODO_ITEM oriented_face
-		return nullptr;
-	}
+	subtype_check_begin(FACE);
+		subtype_check_case(Face, Face_Surface);
+	subtype_check_end(Face);
 
 	A242::Face face;
 	const Node& param_list = out.nodes[parameters];
@@ -677,9 +686,8 @@ compile_signature(Face) {
 }
 
 compile_signature(Line) {
-	if (type != "LINE") {
-		return nullptr;
-	}
+	subtype_check_begin(LINE);
+	subtype_check_end(Line);
 
 	A242::Line line;
 	const Node& param_list = out.nodes[parameters];
@@ -707,9 +715,8 @@ compile_signature(Line) {
 }
 
 compile_signature(Edge_Loop) {
-	if (type != "EDGE_LOOP") {
-		return nullptr;
-	}
+	subtype_check_begin(EDGE_LOOP);
+	subtype_check_end(Edge_Loop);
 
 	A242::Edge_Loop edge_loop;
 	const Node& param_list = out.nodes[parameters];
@@ -742,9 +749,8 @@ compile_signature(Edge_Loop) {
 }
 
 compile_signature(Edge_Curve) {
-	if (type != "EDGE_CURVE") {
-		return nullptr;
-	}
+	subtype_check_begin(EDGE_CURVE);
+	subtype_check_end(Edge_Curve);
 
 	A242::Edge_Curve edge_curve;
 	const Node& param_list = out.nodes[parameters];
@@ -809,6 +815,8 @@ compile_signature(Cylindrical_Surface) {
 }
 
 compile_signature(Plane) {
+	subtype_check_begin(PLANE);
+	subtype_check_end(Plane);
 	A242::Plane plane;
 	const Node& param_list = out.nodes[parameters];
 	if (param_list.list.size != 2)

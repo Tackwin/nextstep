@@ -11,7 +11,7 @@ Build build(Flags flags) noexcept {
 	b.flags.subsystem = Flags::Subsystem::Console;
 	b.flags.disable_exceptions = true;
 	b.flags.compile_native = true;
-
+	b.cli = Build::Cli::Gcc;
 	b.name = "nextstep";
 	// b.cli = Build::Cli::Gcc;
 

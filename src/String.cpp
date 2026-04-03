@@ -127,6 +127,62 @@ size_t to_string(i64 n, Write_String& out) {
 	return to_string((size_t)n, out);
 }
 
+size_t to_string(f64 x, Write_String& out) {
+	size_t cursor = 0;
+	if (!(x == x)) {
+		if (out.size < 3)
+			return cursor;
+		out.data[0] = 'n';
+		out.data[1] = 'a';
+		out.data[2] = 'n';
+		return 3;
+	}
+
+	if (x < 0) {
+		if (cursor >= out.size)
+			return cursor;
+		out.data[cursor] = '-';
+		cursor += 1;
+		x = -x;
+	}
+
+	size_t integer = (size_t)x;
+	f64 fractional = x - integer;
+	while (fractional != (size_t)fractional) {
+		fractional *= 10;
+	}
+
+	Write_String out_integer = { out.data + cursor, out.size - cursor };
+	cursor += to_string(integer, out_integer);
+	if (cursor >= out.size)
+		return cursor;
+	if (fractional > 0) {
+		out.data[cursor] = '.';
+		cursor += 1;
+		if (cursor >= out.size)
+			return cursor;
+
+		// Count the leading 0s
+		f64 power = 0.1;
+		while ((x - integer) < power) {
+			out.data[cursor] = '0';
+			cursor += 1;
+			if (cursor >= out.size)
+				return cursor;
+			power /= 10;
+		}
+
+		Write_String out_fractional = { out.data + cursor, out.size - cursor };
+		cursor += to_string((size_t)fractional, out_fractional);
+	}
+	out.size = cursor;
+
+	return cursor;
+}
+size_t to_string(f32 x, Write_String& out) {
+	return to_string((f64)x, out);
+}
+
 size_t parse_size_t(Read_String str) {
 	size_t n = 0;
 	for (size_t i = 0; i < str.size; ++i) {

@@ -78,10 +78,10 @@ struct Node {
 	};
 
 	Node() {
-		memset(this, 0, sizeof(Node));
+		memset((void*)this, 0, sizeof(Node));
 	}
 	Node(Kind kind) {
-		memset(this, 0, sizeof(Node));
+		memset((void*)this, 0, sizeof(Node));
 		this->kind = kind;
 	}
 	Node(Node&& other) {
@@ -89,8 +89,8 @@ struct Node {
 	}
 	Node& operator=(Node&& other) {
 		if (this == &other) return *this;
-		memcpy(this, &other, sizeof(Node));
-		memset(&other, 0, sizeof(Node));
+		memcpy((void*)this, &other, sizeof(Node));
+		memset((void*)&other, 0, sizeof(Node));
 		return *this;
 	}
 	~Node() {

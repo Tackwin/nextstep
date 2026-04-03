@@ -3,6 +3,9 @@
 #include "Common.hpp"
 #include "String.hpp"
 
+extern void* malloc(size_t n);
+extern void free(void* p);
+
 template<typename T>
 struct DynArray;
 template<typename T>
@@ -27,8 +30,6 @@ T* talloc() {
 	return ::talloc<T>(1);
 }
 
-extern void* malloc(size_t n);
-extern void free(void* p);
 
 // =====================
 
@@ -71,5 +72,6 @@ extern size_t narrow(Read_String16 in, Write_String out);
 
 extern void get_command_line(Write_String& out);
 
-// =====================
+ 
+ // =====================
 extern double monotonic_seconds();

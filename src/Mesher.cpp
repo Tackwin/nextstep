@@ -57,8 +57,10 @@ void discretize(const A242& a242, const A242::Edge_Curve& edge_curve, Mesh& mesh
 
 			constexpr size_t N = 32;
 			for (size_t i = 0; i < N; i += 1) {
-				float angle = angle_start + (angle_end - angle_start) * i / N;
-				Vector3f point = center + cos(angle) * p1 + sin(angle) * p2;
+				float angle = angle_start + (angle_end - angle_start) * i / (N - 1);
+				float c = cos(angle);
+				float s = sin(angle);
+				Vector3f point = center + c * p1 + s * p2;
 				mesh.vertices.push({ point.x, point.y, point.z });
 			}
 		}
@@ -80,6 +82,11 @@ void discretize(const A242& a242, const A242::Edge_Curve& edge_curve, Mesh& mesh
 		// 	mesh.vertices.push({ x, y, z });
 		// }
 	}
+	else {
+		print("Discretizing unsupported ");
+		print(curve.name);
+		print("\n");
+	}
 
 }
 
@@ -95,7 +102,6 @@ void mesh_from_ap242(
 
 		if (auto ptr = lookup<A242::Edge_Curve>(parsed, a242, i); ptr) {
 			discretize(a242, *ptr, mesh);
-			// mesh.vertices.push(vertex);
 		}
 	}
 }
@@ -111,15 +117,15 @@ void write_obj(const Mesh& mesh, DynArray<u8>& out) {
 		const Mesh::Vertex& vertex = mesh.vertices[i];
 		append(out, "v ");
 		str.size = 64;
-		to_string((i64)(vertex.x * 10'000), str);
+		to_string(vertex.x, str);
 		append(out, { str.data, str.size });
 		append(out, " ");
 		str.size = 64;
-		to_string((i64)(vertex.y * 10'000), str);
+		to_string(vertex.y, str);
 		append(out, { str.data, str.size });
 		append(out, " ");
 		str.size = 64;
-		to_string((i64)(vertex.z * 10'000), str);
+		to_string(vertex.z, str);
 		append(out, { str.data, str.size });
 		append(out, "\n");
 	}
