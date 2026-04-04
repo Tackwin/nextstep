@@ -58,7 +58,86 @@ Owned_String::operator Read_String() const {
 Owned_String::operator Write_String() const {
 	return { data, size };
 }
+size_t ftoa(float num, char *str, size_t max_len, size_t decimals)
+{
+	if (max_len <= 0)
+		return 0;
 
+	char *ptr = str;
+	int remaining = max_len;
+	char buf[32];
+	int i;
+
+	// Zero (positive or negative zero both become "0")
+	if (num == 0.0f) {
+		if (remaining > 0) {
+			*ptr++ = '0';
+			remaining--;
+		}
+		if (decimals > 0) {
+			if (remaining > 0) {
+				*ptr++ = '.';
+				remaining--;
+			}
+			for (int d = 0; d < decimals && remaining > 0; ++d) {
+				*ptr++ = '0';
+				remaining--;
+			}
+		}
+		return max_len - remaining;
+	}
+
+	// Sign
+	if (num < 0.0f) {
+		if (remaining > 0) {
+			*ptr++ = '-';
+			remaining--;
+		}
+		num = -num;
+	}
+	if (remaining <= 0) return max_len - remaining;
+
+	// Integer part
+	unsigned long long int_part = (unsigned long long)num;
+
+	i = 0;
+	if (int_part == 0) {
+		buf[i++] = '0';
+	} else {
+		while (int_part > 0 && i < 32) {
+			buf[i++] = '0' + (int_part % 10);
+			int_part /= 10;
+		}
+	}
+
+	// Write integer digits (most-significant first), respecting remaining space
+	while (i > 0 && remaining > 0) {
+		*ptr++ = buf[--i];
+		remaining--;
+	}
+	if (remaining <= 0) return max_len - remaining;
+
+	// Fractional part (if requested and space remains)
+	if (decimals > 0) {
+		if (remaining > 0) {
+			*ptr++ = '.';
+			remaining--;
+		}
+		if (remaining <= 0) return max_len - remaining;
+
+		float frac_part = num - (float)(unsigned long long)num;
+
+		for (int d = 0; d < decimals && remaining > 0; ++d) {
+			frac_part *= 10.0f;
+			int digit = (int)frac_part;
+			*ptr++ = '0' + digit;
+			remaining--;
+			frac_part -= (float)digit;
+		}
+	}
+
+	return max_len - remaining;
+}
 
 bool strcomp(Read_String a, Read_String b) {
 	if (a.size != b.size) return false;
@@ -128,56 +207,8 @@ size_t to_string(i64 n, Write_String& out) {
 }
 
 size_t to_string(f64 x, Write_String& out) {
-	size_t cursor = 0;
-	if (!(x == x)) {
-		if (out.size < 3)
-			return cursor;
-		out.data[0] = 'n';
-		out.data[1] = 'a';
-		out.data[2] = 'n';
-		return 3;
-	}
-
-	if (x < 0) {
-		if (cursor >= out.size)
-			return cursor;
-		out.data[cursor] = '-';
-		cursor += 1;
-		x = -x;
-	}
-
-	size_t integer = (size_t)x;
-	f64 fractional = x - integer;
-	while (fractional != (size_t)fractional) {
-		fractional *= 10;
-	}
-
-	Write_String out_integer = { out.data + cursor, out.size - cursor };
-	cursor += to_string(integer, out_integer);
-	if (cursor >= out.size)
-		return cursor;
-	if (fractional > 0) {
-		out.data[cursor] = '.';
-		cursor += 1;
-		if (cursor >= out.size)
-			return cursor;
-
-		// Count the leading 0s
-		f64 power = 0.1;
-		while ((x - integer) < power) {
-			out.data[cursor] = '0';
-			cursor += 1;
-			if (cursor >= out.size)
-				return cursor;
-			power /= 10;
-		}
-
-		Write_String out_fractional = { out.data + cursor, out.size - cursor };
-		cursor += to_string((size_t)fractional, out_fractional);
-	}
-	out.size = cursor;
-
-	return cursor;
+	out.size = ftoa((float)x, (char*)out.data, out.size, 6);
+	return out.size;
 }
 size_t to_string(f32 x, Write_String& out) {
 	return to_string((f64)x, out);

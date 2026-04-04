@@ -433,7 +433,7 @@ bool eat_enumeration(parse_express_from_memory_result& res, Read_String file, No
 	res.tokens.push(token);
 
 	Node node(Node::Kind::ENUMERATION);
-	node.enumeration = { file.data + beg + 1, end - beg - 2 };
+	node.enumeration = { file.data + beg + 1, end - beg - 1 };
 	out = res.nodes.size;
 	res.nodes.push(xstd::move(node));
 	return !res.error;

@@ -23,6 +23,12 @@ Vector3f operator-(const Vector3f& a, const Vector3f& b) {
 Vector3f operator+(const Vector3f& a, const Vector3f& b) {
 	return { a.x + b.x, a.y + b.y, a.z + b.z };
 }
+Vector3f& operator+=(Vector3f& a, const Vector3f& b) {
+	a.x += b.x;
+	a.y += b.y;
+	a.z += b.z;
+	return a;
+}
 Vector3f operator*(float b, const Vector3f& a) {
 	return { a.x * b, a.y * b, a.z * b };
 }
@@ -64,7 +70,7 @@ float cos(float x) {
 	return cr_cosf(x);
 }
 float sin(float x) {
-	return fast_sin(x);
+	return cos(x - PI / 2);
 }
 
 

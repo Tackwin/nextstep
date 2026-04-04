@@ -6,11 +6,11 @@
 struct A242 {
 	// #include "A242_struct.hpp"
 
-
 	template<size_t H>
 	struct Item {
 		static constexpr u32 hash = (u32)H;
 		u32 id = (u32)H;
+		const char* type_name = "";
 	};
 	template<size_t H>
 	using Item_Pack = xstd::Template_Pack<Item<H>>;
@@ -70,8 +70,40 @@ struct A242 {
 
 	struct_A242(Surface, Geometric_Representation_Item_Pack) {
 	};
+	struct_A242(Bounded_Surface, Surface_Pack) {
+	};
+	struct_A242(B_Spline_Surface, Bounded_Surface_Pack) {
+		u32 u_degree;
+		u32 v_degree;
+		View<Cartesian_Point*> control_points_list;
+		enum class Surface_Form {
+			Unspecified,
+			Plane,
+			Cylindrical,
+			Conical,
+			Spherical,
+			Toroidal
+		};
+		Surface_Form surface_form;
+
+		bool u_closed;
+		bool v_closed;
+		bool self_intersect;
+	};
+	struct_A242(Rational_B_Spline_Surface, B_Spline_Surface_Pack) {
+		View<f32> weights_datas;
+		View<u32> weights_sizes;
+	};
 	struct_A242(Elementary_Surface, Surface_Pack) {
 		ref<Axis2_Placement_3d> position = nullptr;
+	};
+	struct_A242(Toroidal_Surface, Elementary_Surface_Pack) {
+		float major_radius;
+		float minor_radius;
+	};
+	struct_A242(Conical_Surface, Elementary_Surface_Pack) {
+		float radius;
+		float semi_angle;
 	};
 	struct_A242(Plane, Elementary_Surface_Pack) {
 	};
@@ -83,11 +115,46 @@ struct A242 {
 	};
 	struct_A242(Curve, Detailed_Geometric_Model_Element_Pack) {
 	};
+	struct_A242(Bounded_Curve, Curve_Pack) {
+	};
+	struct_A242(B_Spline_Curve, Bounded_Curve_Pack) {
+		u32 degree;
+		View<Cartesian_Point*> control_points_list;
+
+		enum class Curve_Form {
+			Polyline,
+			Circular_Arc,
+			Ellipse_Arc,
+			Parabolic_Arc,
+			Hyperbolic_Arc,
+			Unspecified
+		};
+		Curve_Form curve_form;
+
+		bool closed_curve;
+		bool self_intersect;
+	};
+	struct_A242(B_Spline_Curve_With_Knots, B_Spline_Curve_Pack) {
+		View<u32> knot_multiplicities;
+		View<f32> knots;
+
+		enum class Knot_Type {
+			Uniform_Knots,
+			Quasi_Uniform_Knots,
+			Piecewise_Bezier_Knots,
+			Unspecified
+		};
+		Knot_Type knot_spec;
+	};
 	struct_A242(Conic, Curve_Pack) {
 		ref<Axis2_Placement_3d> position = nullptr;
 	};
 	struct_A242(Circle, Conic_Pack) {
 		float radius;
+	};
+	struct_A242(Ellipse, Conic_Pack) {
+		float major_radius;
+		float minor_radius;
 	};
 	struct_A242(Edge, Topological_Representation_Item_Pack) {
 		ref<Vertex_Point> edge_start = nullptr;
@@ -161,6 +228,11 @@ struct A242 {
 	DynArray<Edge_Curve*> edge_curves;
 	DynArray<Curve*> curves;
 	DynArray<Circle*> circles;
+	DynArray<Ellipse*> ellipses;
+	DynArray<Conical_Surface*> conical_surfaces;
+	DynArray<B_Spline_Curve*> b_spline_curves;
+	DynArray<B_Spline_Curve_With_Knots*> b_spline_curves_with_knots;
+	DynArray<Toroidal_Surface*> toroidal_surfaces;
 	DynArray<Point*> points;
 	DynArray<Vertex_Point*> vertex_points;
 	DynArray<Cartesian_Point*> cartesian_points;

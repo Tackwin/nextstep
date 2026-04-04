@@ -3,6 +3,8 @@
 
 
 void report_error(A242& res, Read_String msg) {
+	if (msg.size == 0)
+		print("Unknown error\n");
 	res.diagnostic.push(msg);
 }
 
@@ -37,6 +39,11 @@ T* get(
 			*items =
 				(u32*)compile_f(out, a242, token.text, record.simple_record.parameters, nullptr);
 		}
+		if (entity_instance.entity_instance.subsuper_record) {
+			*items = (u32*)compile_f(
+				out, a242, {}, *entity_instance.entity_instance.subsuper_record, nullptr
+			);
+		}
 	}
 
 	return (T*)*items;
@@ -67,6 +74,14 @@ bool is_type(const parse_express_from_memory_result& out, const A242& a242, size
 	return false;
 }
 
+xstd::optional<float> get_number(const parse_express_from_memory_result& out, size_t id) {
+	if (id >= out.nodes.size)
+		return xstd::nullopt;
+	const Node& node = out.nodes[id];
+	if (node.kind != Node::Kind::NUMBER)
+		return xstd::nullopt;
+	return (float)node.number;
+}
 
 #define is_type_decl(x)\
 template<> bool is_type<A242::x>(const parse_express_from_memory_result&, const A242&, size_t)
@@ -113,6 +128,7 @@ compile_signature(Cartesian_Point) {
 	subtype_check_end(Cartesian_Point);
 
 	A242::Cartesian_Point point;
+	point.type_name = "CARTESIAN_POINT";
 
 	const Node& param_list = out.nodes[parameters];
 	if (param_list.list.size != 2)
@@ -155,6 +171,7 @@ compile_signature(Point) {
 	subtype_check_end(Point);
 
 	A242::Point point;
+	point.type_name = "POINT";
 
 	const Node& param_list = out.nodes[parameters];
 	if (param_list.list.size != 1)
@@ -173,6 +190,7 @@ compile_signature(Direction) {
 	subtype_check_begin(DIRECTION);
 	subtype_check_end(Direction);
 	A242::Direction direction;
+	direction.type_name = "DIRECTION";
 	const Node& param_list = out.nodes[parameters];
 	if (param_list.list.size != 2)
 		return nullptr;
@@ -207,6 +225,7 @@ compile_signature(Vertex_Point) {
 	subtype_check_begin(VERTEX_POINT);
 	subtype_check_end(Vertex_Point);
 	A242::Vertex_Point vertex_point;
+	vertex_point.type_name = "VERTEX_POINT";
 	const Node& param_list = out.nodes[parameters];
 	if (param_list.list.size != 2)
 		return nullptr;
@@ -230,6 +249,7 @@ compile_signature(Axis2_Placement_3d) {
 	subtype_check_begin(AXIS2_PLACEMENT_3D);
 	subtype_check_end(Axis2_Placement_3d);
 	A242::Axis2_Placement_3d placement;
+	placement.type_name = "AXIS2_PLACEMENT_3D";
 
 	const Node& param_list = out.nodes[parameters];
 	if (param_list.list.size < 2)
@@ -280,10 +300,46 @@ compile_signature(Axis2_Placement_3d) {
 	a242.axis2_placement_3ds.push(ptr);
 	return ptr;
 }
+
+compile_signature(Ellipse) {
+	subtype_check_begin(ELLIPSE);
+	subtype_check_end(Ellipse);
+	A242::Ellipse ellipse;
+	ellipse.type_name = "ELLIPSE";
+	const Node& param_list = out.nodes[parameters];
+	if (param_list.list.size != 3)
+		return nullptr;
+	
+	const Node& name = out.nodes[param_list.list[0]];
+	ellipse.name = name.string;
+	if (name.kind != Node::Kind::STRING)
+		return nullptr;
+
+	const Node& placement_node = out.nodes[param_list.list[1]];
+	ellipse.position = get_call(Axis2_Placement_3d, out, a242, placement_node.integer);
+	if (!ellipse.position)
+		return nullptr;
+	
+	const Node& major_radius_node = out.nodes[param_list.list[2]];
+	ellipse.major_radius = (float)major_radius_node.number;
+	if (major_radius_node.kind != Node::Kind::NUMBER)
+		return nullptr;
+
+	const Node& minor_radius_node = out.nodes[param_list.list[3]];
+	ellipse.minor_radius = (float)minor_radius_node.number;
+	if (minor_radius_node.kind != Node::Kind::NUMBER)
+		return nullptr;
+
+	A242::Ellipse* ptr = a242.arena.take<A242::Ellipse>(xstd::move(ellipse));
+	a242.ellipses.push(ptr);
+	return ptr;
+}
+
 compile_signature(Circle) {
 	subtype_check_begin(CIRCLE);
 	subtype_check_end(Circle);
 	A242::Circle circle;
+	circle.type_name = "CIRCLE";
 	const Node& param_list = out.nodes[parameters];
 	if (param_list.list.size != 3)
 		return nullptr;
@@ -310,7 +366,7 @@ compile_signature(Circle) {
 
 compile_signature(Conic) {
 	subtype_check_begin(CONIC);
-		// ellipse,
+		subtype_check_case(Conic, Ellipse);
 		// hyperbola,
 		// parabola
 		subtype_check_case(Conic, Circle);
@@ -325,6 +381,7 @@ compile_signature(Vector) {
 	subtype_check_end(Vector);
 
 	A242::Vector vector;
+	vector.type_name = "VECTOR";
 	const Node& param_list = out.nodes[parameters];
 	if (param_list.list.size != 3)
 		return nullptr;
@@ -350,6 +407,7 @@ compile_signature(Vector) {
 }
 
 compile_signature(Line);
+compile_signature(Bounded_Curve);
 
 compile_signature(Curve) {
 	subtype_check_begin(CURVE);
@@ -361,6 +419,7 @@ compile_signature(Curve) {
 		// offset_curve_2d,
 		// offset_curve_3d,
 		// curve_replica
+		subtype_check_case(Curve, Bounded_Curve);
 		subtype_check_case(Curve, Line);
 		subtype_check_case(Curve, Conic);
 	subtype_check_end(Curve);
@@ -371,6 +430,229 @@ compile_signature(Curve) {
 
 compile_signature(Oriented_Edge);
 compile_signature(Edge_Curve);
+
+compile_signature(B_Spline_Curve);
+
+compile_signature(Bounded_Curve) {
+	subtype_check_begin(BOUNDED_CURVE);
+		// bezier_curve,
+		subtype_check_case(Bounded_Curve, B_Spline_Curve);
+		// offset_curve_2d,
+		// offset_curve_3d,
+	subtype_check_end(Bounded_Curve);
+
+	print("A bounded curve by itself should never be instantiated\n");
+	return nullptr;
+}
+
+compile_signature(B_Spline_Curve_With_Knots);
+
+compile_signature(B_Spline_Curve) {
+	subtype_check_begin(B_SPLINE_CURVE);
+		subtype_check_case(B_Spline_Curve, B_Spline_Curve_With_Knots);
+		// >TODO_ITEM: bezier_curve,
+		// >TODO_ITEM: quasi_uniform_bspline_curve,
+		// >TODO_ITEM: rational_b_spline_curve,
+		// >TODO_ITEM: uniform_curve,
+	subtype_check_end(B_Spline_Curve);
+	A242::B_Spline_Curve b_spline_curve;
+	b_spline_curve.type_name = "B_SPLINE_CURVE";
+
+	const Node& param_list = out.nodes[parameters];
+	if (param_list.list.size != 6)
+		return nullptr;
+
+	const Node& name = out.nodes[param_list.list[0]];
+	if (name.kind != Node::Kind::STRING)
+		return nullptr;
+	
+	b_spline_curve.name = name.string;
+
+	const Node& degree_node = out.nodes[param_list.list[1]];
+	if (degree_node.kind != Node::Kind::NUMBER)
+		return nullptr;
+	
+	b_spline_curve.degree = (u32)degree_node.number;
+
+	const Node& control_points_list = out.nodes[param_list.list[2]];
+	if (control_points_list.kind != Node::Kind::LIST)
+		return nullptr;
+
+	// We have to allocate the control points before we can fill them because of possible circular references
+	b_spline_curve.control_points_list.size = control_points_list.list.size;
+	b_spline_curve.control_points_list.data = a242.arena.alloc<A242::Cartesian_Point*>(
+		b_spline_curve.control_points_list.size
+	);
+	for (size_t i = 0; i < control_points_list.list.size; i += 1) {
+		const Node& point_node = out.nodes[control_points_list.list[i]];
+		if (point_node.kind != Node::Kind::ENTITY_INSTANCE_NAME)
+			return nullptr;
+
+		b_spline_curve.control_points_list.data[i] =
+			get_call(Cartesian_Point, out, a242, point_node.integer);
+		if (!b_spline_curve.control_points_list.data[i])
+			return nullptr;
+	}
+
+	const Node& curve_form_node = out.nodes[param_list.list[3]];
+	if (curve_form_node.kind != Node::Kind::ENUMERATION)
+		return nullptr;
+
+	if (curve_form_node.enumeration == "POLYLINE")
+		b_spline_curve.curve_form = A242::B_Spline_Curve::Curve_Form::Polyline;
+	else if (curve_form_node.enumeration == "CIRCULAR_ARC")
+		b_spline_curve.curve_form = A242::B_Spline_Curve::Curve_Form::Circular_Arc;
+	else if (curve_form_node.enumeration == "ELLIPSE_ARC")
+		b_spline_curve.curve_form = A242::B_Spline_Curve::Curve_Form::Ellipse_Arc;
+	else if (curve_form_node.enumeration == "PARABOLIC_ARC")
+		b_spline_curve.curve_form = A242::B_Spline_Curve::Curve_Form::Parabolic_Arc;
+	else if (curve_form_node.enumeration == "HYPERBOLIC_ARC")
+		b_spline_curve.curve_form = A242::B_Spline_Curve::Curve_Form::Hyperbolic_Arc;
+	else if (curve_form_node.enumeration == "UNSPECIFIED")
+		b_spline_curve.curve_form = A242::B_Spline_Curve::Curve_Form::Unspecified;
+	else
+		return nullptr;
+
+	const Node& closed_curve_node = out.nodes[param_list.list[4]];
+	if (closed_curve_node.kind != Node::Kind::ENUMERATION)
+		return nullptr;
+
+	b_spline_curve.closed_curve = closed_curve_node.enumeration == "T";
+
+	const Node& self_intersect_node = out.nodes[param_list.list[5]];
+	if (self_intersect_node.kind != Node::Kind::ENUMERATION)
+		return nullptr;
+	b_spline_curve.self_intersect = self_intersect_node.enumeration == "T";
+
+	A242::B_Spline_Curve* ptr = a242.arena.take<A242::B_Spline_Curve>(xstd::move(b_spline_curve));
+	a242.b_spline_curves.push(ptr);
+
+	return ptr;
+}
+
+compile_signature(B_Spline_Curve_With_Knots) {
+	subtype_check_begin(B_SPLINE_CURVE_WITH_KNOTS);
+	subtype_check_end(B_Spline_Curve_With_Knots);
+	A242::B_Spline_Curve_With_Knots b_spline_curve_with_knots;
+	b_spline_curve_with_knots.type_name = "B_SPLINE_CURVE_WITH_KNOTS";
+
+	const Node& param_list = out.nodes[parameters];
+	if (param_list.list.size != 9)
+		return nullptr;
+
+	const Node& name = out.nodes[param_list.list[0]];
+	if (name.kind != Node::Kind::STRING)
+		return nullptr;
+	
+	b_spline_curve_with_knots.name = name.string;
+
+	const Node& degree_node = out.nodes[param_list.list[1]];
+	if (degree_node.kind != Node::Kind::NUMBER)
+		return nullptr;
+	
+	b_spline_curve_with_knots.degree = (u32)degree_node.number;
+
+	const Node& control_points_list = out.nodes[param_list.list[2]];
+	if (control_points_list.kind != Node::Kind::LIST)
+		return nullptr;
+
+	// We have to allocate the control points before we can fill them because of possible circular references
+	b_spline_curve_with_knots.control_points_list.size = control_points_list.list.size;
+	b_spline_curve_with_knots.control_points_list.data = a242.arena.alloc<A242::Cartesian_Point*>(
+		b_spline_curve_with_knots.control_points_list.size
+	);
+	for (size_t i = 0; i < control_points_list.list.size; i += 1) {
+		const Node& point_node = out.nodes[control_points_list.list[i]];
+		if (point_node.kind != Node::Kind::ENTITY_INSTANCE_NAME)
+			return nullptr;
+
+		b_spline_curve_with_knots.control_points_list.data[i] =
+			get_call(Cartesian_Point, out, a242, point_node.integer);
+		if (!b_spline_curve_with_knots.control_points_list.data[i])
+			return nullptr;
+	}
+
+	const Node& curve_form_node = out.nodes[param_list.list[3]];
+	if (curve_form_node.kind != Node::Kind::ENUMERATION)
+		return nullptr;
+
+	if (curve_form_node.enumeration == "POLYLINE")
+		b_spline_curve_with_knots.curve_form = A242::B_Spline_Curve::Curve_Form::Polyline;
+	else if (curve_form_node.enumeration == "CIRCULAR_ARC")
+		b_spline_curve_with_knots.curve_form = A242::B_Spline_Curve::Curve_Form::Circular_Arc;
+	else if (curve_form_node.enumeration == "ELLIPSE_ARC")
+		b_spline_curve_with_knots.curve_form = A242::B_Spline_Curve::Curve_Form::Ellipse_Arc;
+	else if (curve_form_node.enumeration == "PARABOLIC_ARC")
+		b_spline_curve_with_knots.curve_form = A242::B_Spline_Curve::Curve_Form::Parabolic_Arc;
+	else if (curve_form_node.enumeration == "HYPERBOLIC_ARC")
+		b_spline_curve_with_knots.curve_form = A242::B_Spline_Curve::Curve_Form::Hyperbolic_Arc;
+	else if (curve_form_node.enumeration == "UNSPECIFIED")
+		b_spline_curve_with_knots.curve_form = A242::B_Spline_Curve::Curve_Form::Unspecified;
+	else
+		return nullptr;
+
+	const Node& closed_curve_node = out.nodes[param_list.list[4]];
+	if (closed_curve_node.kind != Node::Kind::ENUMERATION)
+		return nullptr;
+
+	b_spline_curve_with_knots.closed_curve = closed_curve_node.enumeration == "T";
+
+	const Node& self_intersect_node = out.nodes[param_list.list[5]];
+	if (self_intersect_node.kind != Node::Kind::ENUMERATION)
+		return nullptr;
+	b_spline_curve_with_knots.self_intersect = self_intersect_node.enumeration == "T";
+
+	const Node& knot_multiplicities_list = out.nodes[param_list.list[6]];
+	if (knot_multiplicities_list.kind != Node::Kind::LIST)
+		return nullptr;
+
+	b_spline_curve_with_knots.knot_multiplicities.size = knot_multiplicities_list.list.size;
+	b_spline_curve_with_knots.knot_multiplicities.data = a242.arena.alloc<u32>(
+		b_spline_curve_with_knots.knot_multiplicities.size
+	);
+	for (size_t i = 0; i < knot_multiplicities_list.list.size; i += 1) {
+		const Node& param = out.nodes[knot_multiplicities_list.list[i]];
+		if (param.kind != Node::Kind::NUMBER)
+			return nullptr;
+		b_spline_curve_with_knots.knot_multiplicities.data[i] = (u32)param.number;
+	}
+
+	const Node& knots_list = out.nodes[param_list.list[7]];
+	if (knots_list.kind != Node::Kind::LIST)
+		return nullptr;
+
+	b_spline_curve_with_knots.knots.size = knots_list.list.size;
+	b_spline_curve_with_knots.knots.data = a242.arena.alloc<float>(
+		b_spline_curve_with_knots.knots.size
+	);
+	for (size_t i = 0; i < knots_list.list.size; i += 1) {
+		const Node& param = out.nodes[knots_list.list[i]];
+		if (param.kind != Node::Kind::NUMBER)
+			return nullptr;
+		b_spline_curve_with_knots.knots.data[i] = (float)param.number;
+	}
+
+	const Node& knot_spec_node = out.nodes[param_list.list[8]];
+	if (knot_spec_node.kind != Node::Kind::ENUMERATION)
+		return nullptr;
+
+	if (knot_spec_node.enumeration == "UNIFORM_KNOTS")
+		b_spline_curve_with_knots.knot_spec = A242::B_Spline_Curve_With_Knots::Knot_Type::Uniform_Knots;
+	else if (knot_spec_node.enumeration == "QUASI_UNIFORM_KNOTS")
+		b_spline_curve_with_knots.knot_spec = A242::B_Spline_Curve_With_Knots::Knot_Type::Quasi_Uniform_Knots;
+	else if (knot_spec_node.enumeration == "PIECEWISE_BEZIER_KNOTS")
+		b_spline_curve_with_knots.knot_spec = A242::B_Spline_Curve_With_Knots::Knot_Type::Piecewise_Bezier_Knots;
+	else if (knot_spec_node.enumeration == "UNSPECIFIED")
+		b_spline_curve_with_knots.knot_spec = A242::B_Spline_Curve_With_Knots::Knot_Type::Unspecified;
+	else
+		return nullptr;
+
+	A242::B_Spline_Curve_With_Knots* ptr = a242.arena.take<A242::B_Spline_Curve_With_Knots>(
+		xstd::move(b_spline_curve_with_knots)
+	);
+	a242.b_spline_curves_with_knots.push(ptr);
+	return ptr;
+}
 
 compile_signature(Edge) {
 	subtype_check_begin(EDGE);
@@ -385,6 +667,7 @@ compile_signature(Oriented_Edge) {
 	subtype_check_begin(ORIENTED_EDGE);
 	subtype_check_end(Oriented_Edge);
 	A242::Oriented_Edge oriented_edge;
+	oriented_edge.type_name = "ORIENTED_EDGE";
 
 	const Node& param_list = out.nodes[parameters];
 	if (param_list.list.size != 5)
@@ -428,6 +711,7 @@ compile_signature(Face_Outer_Bound) {
 	subtype_check_end(Face_Outer_Bound);
 
 	A242::Face_Outer_Bound face_outer_bound;
+	face_outer_bound.type_name = "FACE_OUTER_BOUND";
 	const Node& param_list = out.nodes[parameters];
 	if (param_list.list.size != 3)
 		return nullptr;
@@ -459,6 +743,7 @@ compile_signature(Face_Bound) {
 	subtype_check_end(Face_Bound);
 
 	A242::Face_Bound face_bound;
+	face_bound.type_name = "FACE_BOUND";
 	const Node& param_list = out.nodes[parameters];
 	if (param_list.list.size != 3)
 		return nullptr;
@@ -497,6 +782,7 @@ compile_signature(Closed_Shell) {
 	subtype_check_end(Closed_Shell);
 
 	A242::Closed_Shell closed_shell;
+	closed_shell.type_name = "CLOSED_SHELL";
 	const Node& param_list = out.nodes[parameters];
 	if (param_list.list.size != 2)
 		return nullptr;
@@ -517,7 +803,9 @@ compile_signature(Closed_Shell) {
 			return nullptr;
 		closed_shell.cfs_faces.data[i] = get_call(Face, out, a242, face_node.integer);
 		if (!closed_shell.cfs_faces.data[i])
-			return nullptr;
+			print("A face in a closed shell was null\n");
+		// if (!closed_shell.cfs_faces.data[i])
+		// 	return nullptr;
 	}
 
 	A242::Closed_Shell* ptr = a242.arena.take<A242::Closed_Shell>(xstd::move(closed_shell));
@@ -530,6 +818,7 @@ compile_signature(Manifold_Solid_Brep) {
 	subtype_check_end(Manifold_Solid_Brep);
 
 	A242::Manifold_Solid_Brep brep;
+	brep.type_name = "MANIFOLD_SOLID_BREP";
 	const Node& param_list = out.nodes[parameters];
 	if (param_list.list.size != 2)
 		return nullptr;
@@ -550,25 +839,120 @@ compile_signature(Manifold_Solid_Brep) {
 }
 
 compile_signature(Cylindrical_Surface);
+compile_signature(Toroidal_Surface);
 compile_signature(Plane);
+compile_signature(Conical_Surface);
 
 compile_signature(Elementary_Surface) {
 	subtype_check_begin(ELEMENTARY_SURFACE);
-		// >TODO_ITEM conical surface
+		subtype_check_case(Elementary_Surface, Conical_Surface);
 		// >TODO_ITEM dupin cyclide surface
 		// >TODO_ITEM spherical surface
-		// >TODO_ITEM toroidal surface
 		// if (type == "CYLINDRICAL_SURFACE")
 		// 	print("azeaze");
+		subtype_check_case(Elementary_Surface, Toroidal_Surface);
 		subtype_check_case(Elementary_Surface, Cylindrical_Surface);
 		subtype_check_case(Elementary_Surface, Plane);
 	subtype_check_end(Elementary_Surface);
 	return nullptr;
 }
 
+compile_signature(Conical_Surface) {
+	subtype_check_begin(CONICAL_SURFACE);
+	subtype_check_end(Conical_Surface);
+
+	A242::Conical_Surface conical_surface;
+	conical_surface.type_name = "CONICAL_SURFACE";
+	const Node& param_list = out.nodes[parameters];
+	if (param_list.list.size != 4)
+		return nullptr;
+
+	const Node& name = out.nodes[param_list.list[0]];
+	conical_surface.name = name.string;
+	if (name.kind != Node::Kind::STRING)
+		return nullptr;
+
+	const Node& position_node = out.nodes[param_list.list[1]];
+	conical_surface.position = get_call(Axis2_Placement_3d, out, a242, position_node.integer);
+	if (!conical_surface.position)
+		return nullptr;
+
+	if (auto radius = get_number(out, param_list.list[2]); radius)
+		conical_surface.radius = *radius;
+	else
+		return nullptr;
+
+	if (auto semi_angle = get_number(out, param_list.list[3]); semi_angle)
+		conical_surface.semi_angle = *semi_angle;
+	else
+		return nullptr;
+
+	A242::Conical_Surface* ptr = a242.arena.take<A242::Conical_Surface>(xstd::move(conical_surface));
+	a242.conical_surfaces.push(ptr);
+	return ptr;
+}
+
+compile_signature(Toroidal_Surface) {
+	subtype_check_begin(TOROIDAL_SURFACE);
+		// >TODO_ITEM degenerate_toroidal_surface
+	subtype_check_end(Toroidal_Surface);
+
+	A242::Toroidal_Surface toroidal_surface;
+	toroidal_surface.type_name = "TOROIDAL_SURFACE";
+	const Node& param_list = out.nodes[parameters];
+	if (param_list.list.size != 4)
+		return nullptr;
+
+	const Node& name = out.nodes[param_list.list[0]];
+	toroidal_surface.name = name.string;
+	if (name.kind != Node::Kind::STRING)
+		return nullptr;
+
+	const Node& position_node = out.nodes[param_list.list[1]];
+	toroidal_surface.position = get_call(Axis2_Placement_3d, out, a242, position_node.integer);
+	if (!toroidal_surface.position)
+		return nullptr;
+
+	if (auto major_radius = get_number(out, param_list.list[2]); major_radius)
+		toroidal_surface.major_radius = *major_radius;
+	else
+		return nullptr;
+
+	if (auto minor_radius = get_number(out, param_list.list[3]); minor_radius)
+		toroidal_surface.minor_radius = *minor_radius;
+	else
+		return nullptr;
+
+
+	A242::Toroidal_Surface* ptr = a242.arena.take<A242::Toroidal_Surface>(xstd::move(toroidal_surface));
+	a242.toroidal_surfaces.push(ptr);
+	return ptr;
+}
+
+compile_signature(Bounded_Surface);
+compile_signature(Rational_B_Spline_Surface);
+
 compile_signature(Surface) {
+	// This means that it's a complex entity.
+	if (type.size == 0) {
+		// We look for rational bspline.
+		const Node& type_list = out.nodes[parameters];
+		if (type_list.kind != Node::Kind::LIST)
+			return nullptr;
+
+		for (size_t i = 0; i < type_list.list.size; i += 1) {
+			const Node& type_node = out.nodes[type_list.list[i]];
+			if (type_node.kind != Node::Kind::ENTITY_INSTANCE_NAME)
+				return nullptr;
+			
+			if (is_type<A242::Rational_B_Spline_Surface>(out, a242, type_node.integer))
+				return (A242::Surface*)get_call(
+					Rational_B_Spline_Surface, out, a242, type_node.integer);
+		}
+	}
+
 	subtype_check_begin(SURFACE);
-		// >TODO_ITEM bounded_surface
+		subtype_check_case(Surface, Bounded_Surface);
 		subtype_check_case(Surface, Elementary_Surface);
 		// >TODO_ITEM offset_surface
 		// >TODO_ITEM oriented_surface
@@ -578,11 +962,22 @@ compile_signature(Surface) {
 	return nullptr;
 }
 
+compile_signature(Bounded_Surface) {
+	subtype_check_begin(BOUNDED_SURFACE);
+		subtype_check_case(Bounded_Surface, Face_Surface);
+	subtype_check_end(Bounded_Surface);
+
+	print("A bounded surface by itself should never be instantiated\n");
+	return nullptr;
+}
+
 compile_signature(Advanced_Face) {
 	subtype_check_begin(ADVANCED_FACE);
 	subtype_check_end(Advanced_Face);
 
 	A242::Advanced_Face advanced_face;
+	advanced_face.type_name = "ADVANCED_FACE";
+
 	const Node& param_list = out.nodes[parameters];
 	if (param_list.list.size != 4)
 		return nullptr;
@@ -627,6 +1022,7 @@ compile_signature(Face_Surface) {
 	subtype_check_end(Face_Surface);
 
 	A242::Face_Surface face_surface;
+	face_surface.type_name = "FACE_SURFACE";
 	const Node& param_list = out.nodes[parameters];
 	if (param_list.list.size != 3)
 		return nullptr;
@@ -671,6 +1067,7 @@ compile_signature(Face) {
 	subtype_check_end(Face);
 
 	A242::Face face;
+	face.type_name = "FACE";
 	const Node& param_list = out.nodes[parameters];
 	if (param_list.list.size != 1)
 		return nullptr;
@@ -690,6 +1087,7 @@ compile_signature(Line) {
 	subtype_check_end(Line);
 
 	A242::Line line;
+	line.type_name = "LINE";
 	const Node& param_list = out.nodes[parameters];
 	if (param_list.list.size != 3)
 		return nullptr;
@@ -719,6 +1117,7 @@ compile_signature(Edge_Loop) {
 	subtype_check_end(Edge_Loop);
 
 	A242::Edge_Loop edge_loop;
+	edge_loop.type_name = "EDGE_LOOP";
 	const Node& param_list = out.nodes[parameters];
 	if (param_list.list.size != 2)
 		return nullptr;
@@ -753,6 +1152,7 @@ compile_signature(Edge_Curve) {
 	subtype_check_end(Edge_Curve);
 
 	A242::Edge_Curve edge_curve;
+	edge_curve.type_name = "EDGE_CURVE";
 	const Node& param_list = out.nodes[parameters];
 	if (param_list.list.size != 5)
 		return nullptr;
@@ -788,7 +1188,10 @@ compile_signature(Edge_Curve) {
 }
 
 compile_signature(Cylindrical_Surface) {
+	subtype_check_begin(CYLINDRICAL_SURFACE);
+	subtype_check_end(Cylindrical_Surface);
 	A242::Cylindrical_Surface surface;
+	surface.type_name = "CYLINDRICAL_SURFACE";
 	const Node& param_list = out.nodes[parameters];
 	if (param_list.list.size != 3)
 		return nullptr;
@@ -818,6 +1221,7 @@ compile_signature(Plane) {
 	subtype_check_begin(PLANE);
 	subtype_check_end(Plane);
 	A242::Plane plane;
+	plane.type_name = "PLANE";
 	const Node& param_list = out.nodes[parameters];
 	if (param_list.list.size != 2)
 		return nullptr;

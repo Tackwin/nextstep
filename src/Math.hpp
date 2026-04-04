@@ -19,6 +19,7 @@ extern float sqrt(float x);
 
 extern Vector3f operator-(const Vector3f& a, const Vector3f& b);
 extern Vector3f operator+(const Vector3f& a, const Vector3f& b);
+extern Vector3f& operator+=(Vector3f& a, const Vector3f& b);
 extern Vector3f operator*(float b, const Vector3f& a);
 extern Vector3f operator*(const Vector3f& a, float b);
 extern Vector3f operator/(const Vector3f& a, float b);

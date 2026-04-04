@@ -3,13 +3,49 @@
 #include "Math.hpp"
 #include "math.h"
 
+Vector3f evaluate_bspline(
+	const View<Vector3f>& control_points,
+	const View<f32>& knots,
+	u32 degree,
+	float t
+) {
+	auto basis = [&] (auto& basis, u32 i, u32 p, f32 u) -> f32 {
+		if (p == 0) {
+			if (knots[i] <= u && u < knots[i + 1]) {
+				return 1.0f;
+			} else {
+				return 0.0f;
+			}
+		}
+
+		f32 left = basis(basis, i, p - 1, u);
+		f32 right = basis(basis, i + 1, p - 1, u);
+		f32 left_coeff = 0.0f;
+		f32 right_coeff = 0.0f;
+		if (knots[i + p] != knots[i]) {
+			left_coeff = (u - knots[i]) / (knots[i + p] - knots[i]);
+		}
+		if (knots[i + p + 1] != knots[i + 1]) {
+			right_coeff = (knots[i + p + 1] - u) / (knots[i + p + 1] - knots[i + 1]);
+		}
+		return left_coeff * left + right_coeff * right;
+	};
+
+	Vector3f point = { 0, 0, 0 };
+	for (size_t i = 0; i < control_points.size; i += 1) {
+		f32 b = basis(basis, i, degree, t);
+		point += b * control_points[i];
+	}
+	return point;
+}
+
 void discretize(const A242& a242, const A242::Edge_Curve& edge_curve, Mesh& mesh) {
 	const A242::Curve& curve = *edge_curve.edge_geometry;
 	const A242::Vertex_Point& start_vertex = *edge_curve.edge_start;
 	const A242::Vertex_Point& end_vertex = *edge_curve.edge_end;
 	bool is_cartesian = true;
 	is_cartesian &= start_vertex.vertex_geometry->id == A242::Cartesian_Point::hash;
-	is_cartesian &= start_vertex.vertex_geometry->id == A242::Cartesian_Point::hash;
+	is_cartesian &= end_vertex.vertex_geometry->id == A242::Cartesian_Point::hash;
 
 	Vector3f start(
 		((const A242::Cartesian_Point*)start_vertex.vertex_geometry)->x,
@@ -54,18 +90,23 @@ void discretize(const A242& a242, const A242::Edge_Curve& edge_curve, Mesh& mesh
 		float angle_start = center_to_start <angle_between_unit> p1;
 		float angle_end = center_to_end <angle_between_unit> p1;
 
+		if (!edge_curve.same_sense) {
+			float temp = angle_start;
+			angle_start = angle_end;
+			angle_end = temp;
+		}
+
 		if (angle_start >= angle_end) {
 			angle_end += 2 * PI;
 		}
 
-			constexpr size_t N = 32;
-			for (size_t i = 0; i < N; i += 1) {
-				float angle = angle_start + (angle_end - angle_start) * i / (N - 1);
-				float c = cos(angle);
-				float s = sin(angle);
-				Vector3f point = center + c * p1 + s * p2;
-				mesh.vertices.push({ point.x, point.y, point.z });
-			}
+		constexpr size_t N = 32;
+		for (size_t i = 0; i < N; i += 1) {
+			float angle = angle_start + (angle_end - angle_start) * i / (N - 1);
+			float c = cos(angle);
+			float s = sin(angle);
+			Vector3f point = center + c * p1 + s * p2;
+			mesh.vertices.push({ point.x, point.y, point.z });
 		}
 	} else if (curve.id == A242::Line::hash) {
 		const A242::Line& line = (const A242::Line&)curve;
@@ -81,21 +122,45 @@ void discretize(const A242& a242, const A242::Edge_Curve& edge_curve, Mesh& mesh
 
 		constexpr size_t N = 32;
 		for (size_t i = 0; i < N; i += 1) {
-			float t_ = t + (u - t) * i / N;
+			float t_ = t + (u - t) * i / (N - 1);
 			Vector3f point = o + t_ * d;
+			mesh.vertices.push({ point.x, point.y, point.z });
+		}
+	} else if (curve.id == A242::B_Spline_Curve_With_Knots::hash) {
+		auto bspline = ((const A242::B_Spline_Curve_With_Knots&)curve);
+		View<A242::Cartesian_Point*> control_points = bspline.control_points_list;
+
+		u32 k = control_points.size - 1;
+		u32 d = bspline.degree;
+		
+		f32* mults_knots = talloc<f32>(k + d + 2);
+		Vector3f* control_points_out = talloc<Vector3f>(control_points.size);
+		for (size_t i = 0; i < control_points.size; i += 1) {
+			control_points_out[i] = Vector3f(
+				control_points[i]->x, control_points[i]->y, control_points[i]->z
+			);
+		}
+		for (size_t i = 0, cursor = 0; i < bspline.knot_multiplicities.size; i += 1) {
+			for (size_t j = 0; j < bspline.knot_multiplicities[i]; j += 1, cursor += 1) {
+				mults_knots[cursor] = bspline.knots[i];
+			}
+		}
+
+		for (size_t i = 0; i < 32; i += 1) {
+			float t = mults_knots[0] + (mults_knots[k + d + 1] - mults_knots[0]) * i / 31;
+			Vector3f point = evaluate_bspline(
+				{ control_points_out, control_points.size },
+				{ mults_knots, k + d + 2 },
+				bspline.degree,
+				t
+			);
 			mesh.vertices.push({ point.x, point.y, point.z });
 		}
 	} else {
 		print("Unknown curve type ");
-		print(curve.name);
+		print(fromcstr<Read_String>(curve.type_name));
 		print("\n");
 	}
-	else {
-		print("Discretizing unsupported ");
-		print(curve.name);
-		print("\n");
-	}
-
 }
 
 void mesh_from_ap242(
