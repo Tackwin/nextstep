@@ -94,6 +94,7 @@ bool begins_with_at(Read_String a, const char (&b) [N], size_t at) {
 	return true;
 }
 extern bool operator==(const Read_String& a, const Read_String& b);
+extern bool operator==(const Read_String& a, const char* cstr);
 template<size_t N>
 extern bool operator==(const Read_String& a, const char (&cstr)[N]) {
 	if (a.size != N - 1)

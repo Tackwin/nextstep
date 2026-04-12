@@ -38,6 +38,27 @@ Vector3f evaluate_bspline(
 	}
 	return point;
 }
+void discretize(const A242& a242, const A242::Advanced_Face& advanced_face, Mesh& mesh) {
+	A242::Surface* surface = (A242::Surface*)advanced_face.face_geometry;
+	if (!surface)
+		return;
+
+	if (surface->id == A242::Plane::hash) {
+		A242::Plane& plane = (A242::Plane&)*surface;
+		Vector3f center;
+		Vector3f normal;
+		center.x = plane.position->location->x;
+		center.y = plane.position->location->y;
+		center.z = plane.position->location->z;
+		normal.x = plane.position->axis->x;
+		normal.y = plane.position->axis->y;
+		normal.z = plane.position->axis->z;
+
+		print("Plane\n");
+	} else {
+		print("Unsupported surface type\n");
+	}
+}
 
 void discretize(const A242& a242, const A242::Edge_Curve& edge_curve, Mesh& mesh) {
 	const A242::Curve& curve = *edge_curve.edge_geometry;
@@ -58,7 +79,7 @@ void discretize(const A242& a242, const A242::Edge_Curve& edge_curve, Mesh& mesh
 		((const A242::Cartesian_Point*)end_vertex.vertex_geometry)->z
 	);
 	if (!is_cartesian) {
-		// >TODO_MESH
+		print("Non cartesian\n");
 		return;
 	}
 	
@@ -173,7 +194,10 @@ void mesh_from_ap242(
 		if (!a242.instance_name_to_items[i])
 			continue;
 
-		if (auto ptr = lookup<A242::Edge_Curve>(parsed, a242, i); ptr) {
+		// if (auto ptr = lookup<A242::Edge_Curve>(parsed, a242, i); ptr) {
+		// 	discretize(a242, *ptr, mesh);
+		// }
+		if (auto ptr = lookup<A242::Advanced_Face>(parsed, a242, i); ptr) {
 			discretize(a242, *ptr, mesh);
 		}
 	}

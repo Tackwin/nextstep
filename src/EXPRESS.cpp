@@ -638,9 +638,17 @@ bool eat_list(
 	if (res.error)
 		return false;
 
-	eat_litteral(res, file, "(", Token::Kind::LEFT_PARENTHESIS);
-	bool left_on_comma = false;
 	Node node(Node::Kind::LIST);
+	eat_litteral(res, file, "(", Token::Kind::LEFT_PARENTHESIS);
+	res.new_branch();
+	if (eat_litteral(res, file, ")", Token::Kind::RIGHT_PARENTHESIS)) {
+		res.commit_branch();
+		out = res.nodes.size;
+		res.nodes.push(xstd::move(node));
+		return !res.error;
+	}
+	res.pop_branch();
+	bool left_on_comma = false;
 	size_t item_node;
 	while (eat_maybe(res, file, item, item_node)) {
 		node.list.push(item_node);

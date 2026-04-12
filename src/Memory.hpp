@@ -178,6 +178,10 @@ struct SSO_Array {
 		return *this;
 	}
 
+	const View<const T> view() const {
+		return { data ? data : sso, size };
+	}
+
 	T* push(T t) {
 		if (size < N) {
 			capacity = size + 1;

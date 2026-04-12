@@ -20,6 +20,28 @@ namespace xstd {
 		return (remove_reference_t<T>&&)t;
 	}
 
+	// is_same
+	template<typename T, typename U>
+	struct is_same {
+		static constexpr bool value = false;
+	};
+	template<typename T>
+	struct is_same<T, T> {
+		static constexpr bool value = true;
+	};
+	template<typename T, typename U>
+	constexpr bool is_same_v = is_same<T, U>::value;
+
+	// Enable if implementation
+	template<bool B, typename T = void>
+	struct enable_if {};
+
+	template<typename T>
+	struct enable_if<true, T> { using type = T; };
+
+	template<bool B, typename T = void>
+	using enable_if_t = typename enable_if<B, T>::type;
+
 	// optional
 	struct nullopt_t {
 	};
@@ -72,6 +94,8 @@ namespace xstd {
 			return *this;
 		}
 
+		// Only bool operator if the type is not bool, to avoid ambiguity
+		template<typename U = T, typename = enable_if_t<!is_same_v<U, bool>>>
 		operator bool() const {
 			return has_value;
 		}
@@ -101,18 +125,6 @@ namespace xstd {
 			return value;
 		}
 	};
-
-	// is_same
-	template<typename T, typename U>
-	struct is_same {
-		static constexpr bool value = false;
-	};
-	template<typename T>
-	struct is_same<T, T> {
-		static constexpr bool value = true;
-	};
-	template<typename T, typename U>
-	constexpr bool is_same_v = is_same<T, U>::value;
 
 	// conditional
 	template<bool b, typename T, typename U>

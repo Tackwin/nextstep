@@ -72,17 +72,29 @@ struct A242 {
 	};
 	struct_A242(Bounded_Surface, Surface_Pack) {
 	};
+	enum class Knot_Type {
+		Uniform_Knots,
+		Quasi_Uniform_Knots,
+		Piecewise_Bezier_Knots,
+		Unspecified
+	};
 	struct_A242(B_Spline_Surface, Bounded_Surface_Pack) {
 		u32 u_degree;
 		u32 v_degree;
-		View<Cartesian_Point*> control_points_list;
+		View<Cartesian_Point*> control_points_datas;
+		View<u32>              control_points_sizes;
 		enum class Surface_Form {
 			Unspecified,
 			Plane,
 			Cylindrical,
 			Conical,
 			Spherical,
-			Toroidal
+			Toroidal,
+			Surface_Of_Revolution,
+			Ruled_Surface,
+			Generalized_Cone,
+			Quadric_Surface,
+			Surface_Of_Extrusion
 		};
 		Surface_Form surface_form;
 
@@ -90,7 +102,26 @@ struct A242 {
 		bool v_closed;
 		bool self_intersect;
 	};
+	struct_A242(B_Spline_Surface_With_Knots, B_Spline_Surface_Pack) {
+		View<u32> u_knot_multiplicities;
+		View<u32> v_knot_multiplicities;
+		View<f32> u_knots;
+		View<f32> v_knots;
+
+		Knot_Type knot_spec;
+	};
+	struct_A242(Uniform_Surface, B_Spline_Surface_Pack) {
+	};
+	struct_A242(Quasi_Uniform_Surface, B_Spline_Surface_Pack) {
+	};
+	struct_A242(Bezier_Surface, B_Spline_Surface_Pack) {
+	};
 	struct_A242(Rational_B_Spline_Surface, B_Spline_Surface_Pack) {
+		B_Spline_Surface_With_Knots_Data with_knots;
+		Uniform_Surface_Data             uniform_surface;
+		Quasi_Uniform_Surface_Data       quasi_uniform_surface;
+		Bezier_Surface_Data              bezier_surface;
+
 		View<f32> weights_datas;
 		View<u32> weights_sizes;
 	};
@@ -138,12 +169,6 @@ struct A242 {
 		View<u32> knot_multiplicities;
 		View<f32> knots;
 
-		enum class Knot_Type {
-			Uniform_Knots,
-			Quasi_Uniform_Knots,
-			Piecewise_Bezier_Knots,
-			Unspecified
-		};
 		Knot_Type knot_spec;
 	};
 	struct_A242(Conic, Curve_Pack) {
@@ -231,7 +256,12 @@ struct A242 {
 	DynArray<Ellipse*> ellipses;
 	DynArray<Conical_Surface*> conical_surfaces;
 	DynArray<B_Spline_Curve*> b_spline_curves;
+	DynArray<B_Spline_Surface_With_Knots*> b_spline_surfaces_with_knots;
 	DynArray<B_Spline_Curve_With_Knots*> b_spline_curves_with_knots;
+	DynArray<Uniform_Surface*> uniform_surfaces;
+	DynArray<Quasi_Uniform_Surface*> quasi_uniform_surfaces;
+	DynArray<Rational_B_Spline_Surface*> rational_b_spline_surfaces;
+	DynArray<Bezier_Surface*> bezier_surfaces;
 	DynArray<Toroidal_Surface*> toroidal_surfaces;
 	DynArray<Point*> points;
 	DynArray<Vertex_Point*> vertex_points;

@@ -163,6 +163,20 @@ bool begins_with_at(Read_String a, Read_String b, size_t at) {
 	return true;
 }
 
+extern bool operator==(const Read_String& a, const char* cstr) {
+	size_t cstr_len = 0;
+	while (cstr[cstr_len] != '\0') {
+		cstr_len++;
+	}
+
+	if (a.size != cstr_len)
+		return false;
+	for (size_t i = 0; i < a.size; ++i) {
+		if (a[i] != cstr[i])
+			return false;
+	}
+	return true;
+}
 bool operator==(const Read_String& a, const Read_String& b) {
 	if (a.size != b.size)
 		return false;

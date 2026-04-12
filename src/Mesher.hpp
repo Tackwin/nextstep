@@ -10,16 +10,23 @@ struct Mesh {
 		float y;
 		float z;
 	};
+	struct Face {
+		u32 v1;
+		u32 v2;
+		u32 v3;
+	};
 	struct Vertex_Metadata {
 		u32 face_idx = 0xFFFF'FFFF;
 		u32 edge_idx = 0xFFFF'FFFF;
 	};
 
 	DynArray<Vertex>          vertices;
+	DynArray<Face>            faces;
 	DynArray<Vertex_Metadata> vertices_metadata;
 
 	void clear() {
 		vertices.clear();
+		faces.clear();
 		vertices_metadata.clear();
 	}
 };
